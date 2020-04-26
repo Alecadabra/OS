@@ -2,6 +2,6 @@
 
     #define REQUEST_H
 
-    void request();
+    void* request(void*);
 
 #endif
