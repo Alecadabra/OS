@@ -1,6 +1,6 @@
-#ifndef LIFT_H
+#ifndef LIFT_SIM_A_H
 
-    #define LIFT_H
+    #define LIFT_SIM_A_H
 
     #include "Buffer.h"
 
@@ -11,6 +11,6 @@
     } liftInput;
 
     void* lift(void*);
+    void* request(void*);
 
 #endif
-

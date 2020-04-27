@@ -1,10 +1,9 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#include "Buffer.h"
-#include "Lift.h"
-#include "Request.h"
+#include "lift_sim_A.h"
 
 #define NUM_LIFTS 3
 
@@ -84,4 +83,28 @@ int main(int argc, char* argv[])
     /* buffer_free(buff); */
 
     pthread_exit(NULL);
+}
+
+void* lift(void* liftInputVoidPtr)
+{
+    liftInput* input = (liftInput*)liftInputVoidPtr;
+    /*buffer* buff     = input->buffer;*/
+    int liftNum      = input->liftNum;
+    /*int t            = input->t;*/
+    free(input);
+
+    printf("I am lift %d of pid %d and tid %ld!\n",
+        liftNum, getpid(), pthread_self());
+
+    pthread_exit(0);
+}
+
+void* request(void* bufferVoidPtr)
+{
+    /* buffer* buff = (buffer*)bufferVoidPtr; */
+
+    printf("I am a request of pid %d and tid %ld!\n",
+        getpid(), pthread_self());
+
+    pthread_exit(0);
 }
