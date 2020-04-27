@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "Buffer.h"
 #include "lift_sim_A.h"
 
 #define NUM_LIFTS 3
