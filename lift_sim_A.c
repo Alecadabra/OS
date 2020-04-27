@@ -80,7 +80,10 @@ int main(int argc, char* argv[])
         }
     }
 
-    /* buffer_free(buff); */
+    /* 
+    wait util buffer->completed for all threads
+    buffer_free(buff);
+    */
 
     pthread_exit(NULL);
 }
@@ -95,6 +98,19 @@ void* lift(void* liftInputVoidPtr)
 
     printf("I am lift %d of pid %d and tid %ld!\n",
         liftNum, getpid(), pthread_self());
+    
+    /*
+    while buffer not completed
+        wait until buffer not empty
+        wait until buffer lock is obtained
+        dequeue one entry from buffer
+        unlock buffer
+        wait t seconds
+        change current floor to srcFloor
+        wait t seconds
+        change current floor to destFloor
+    mark lift as completed
+    */
 
     pthread_exit(0);
 }
@@ -105,6 +121,18 @@ void* request(void* bufferVoidPtr)
 
     printf("I am a request of pid %d and tid %ld!\n",
         getpid(), pthread_self());
+
+    /*
+    while not end of file
+        wait until buffer is not full
+        wait until sim_input lock is obtained
+        read one line from sim_input
+        unlock sim_input
+        wait until buffer lock is obtained
+        enqueue once into buffer
+        unlock buffer
+    mark buffer as completed
+    */    
 
     pthread_exit(0);
 }
