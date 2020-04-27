@@ -2,6 +2,8 @@
 
     #define LIFT_H
 
+    #include "Buffer.h"
+
     typedef struct {
         buffer* buffer;   /* Ptr to buffer that stores floor requests */
         int liftNum;      /* This lift's number */

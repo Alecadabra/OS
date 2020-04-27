@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Buffer.h"
 #include "Lift.h"
 #include "Request.h"
-#include "Buffer.h"
 
 #define NUM_LIFTS 3
 
@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
         /* Lift input structs for parameter of lift() */
     pthread_t requestThread;
         /* Thread for request */
-    long i, j;
+    int i;
         /* For loop indexes */
     int m;
         /* Buffer size, given in args */
@@ -55,19 +55,19 @@ int main(int argc, char* argv[])
         pthread_exit(NULL);
     }
 
-    for(j = 0; j < NUM_LIFTS; j++)
+    for(i = 0; i < NUM_LIFTS; i++)
     {
-        printf("Main is initialising thread of lift %ld\n", j + 1);
+        printf("Main is initialising thread of lift %d\n", i + 1);
 
         /* Populate lift input struct */
         liftInputs[i]          = (liftInput*)malloc(sizeof(liftInput));
         liftInputs[i]->buffer  = buff;
-        liftInputs[i]->liftNum = j + 1;
+        liftInputs[i]->liftNum = i + 1;
         liftInputs[i]->t       = t;
 
         /* Create thread */
         threadError = pthread_create(
-            &liftThreads[j],     /* pthread_t ptr */
+            &liftThreads[i],     /* pthread_t ptr */
             NULL,                /* attr, NULL means use default attributes*/
             lift,                /* function ptr to start routine lift() */
             (void*)liftInputs[i] /* argument to give to lift() - lift input */
@@ -80,6 +80,8 @@ int main(int argc, char* argv[])
             pthread_exit(NULL);
         }
     }
+
+    /* buffer_free(buff); */
 
     pthread_exit(NULL);
 }

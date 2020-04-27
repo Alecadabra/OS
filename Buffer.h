@@ -10,6 +10,11 @@
         int count;   /* Number of populated elements */
     } buffer;
 
-    buffer* createBuffer(int);
+    buffer* buffer_create(int);
+    int buffer_isEmpty(buffer*);
+    int buffer_isFull(buffer*);
+    int buffer_enqueue(buffer*, int, int);
+    int buffer_dequeue(buffer*, int*, int*);
+    void buffer_free(buffer*);
 
 #endif

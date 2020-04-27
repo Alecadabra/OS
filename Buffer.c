@@ -73,3 +73,12 @@ int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
     
     return 1;
 }
+
+void buffer_free(buffer* buff)
+{
+    int i;
+
+    for(i = 0; i < buff->size; i++) free(buff->array[i]);
+    free(buff->array);
+    free(buff);
+}
