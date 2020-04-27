@@ -17,6 +17,9 @@ Lift.o : Lift.c Lift.h
 Request.o : Request.c Request.h
 	${gcc} Request.c -c
 
+Buffer.o : Buffer.c Buffer.h
+	${gcc} Buffer.c -c
+
 ${execA} : ${execA}.c Lift.o Request.o
 	${gcc} Lift.o Request.o ${execA}.c -o ${execA}
 

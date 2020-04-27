@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
         /* For loop indexes */
     int m;
         /* Buffer size, given in args */
-    /* int t; */
+    int t;
         /* Time taken for lift to move, given in args */
     int thread_error;
         /* Return value of pthread_create(), nonzero if in error */
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
         pthread_exit(NULL);
     }
     m = atoi(argv[1]);
-    /* t = atoi(argv[2]); */
+    t = atoi(argv[2]);
 
     /* Allocate memory for buffer */
     buffer = (int**)malloc(m * sizeof(int*));
@@ -57,12 +57,12 @@ int main(int argc, char* argv[])
 
     for(j = 0; j < NUM_LIFTS; j++)
     {
-        printf("Main is initialising thread of lift %ld\n", j);
+        printf("Main is initialising thread of lift %ld\n", j + 1);
 
         /* Populate lift input struct */
         liftInputs[i]            = (liftInput*)malloc(sizeof(liftInput));
         liftInputs[i]->bufferPtr = &buffer;
-        liftInputs[i]->liftNum   = i + 1;
+        liftInputs[i]->liftNum   = j + 1;
         liftInputs[i]->m         = m;
         liftInputs[i]->t         = t;
 

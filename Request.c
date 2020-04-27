@@ -4,9 +4,12 @@
 
 #include "Request.h"
 
-void* request(void* bufferPtr)
+void* request(void* bufferVoidPtr)
 {
-    printf("I am a request of pid %d and tid %ld!\n", getpid(), pthread_self());
+    /* int*** bufferPtr = (int***)bufferVoidPtr; */
+
+    printf("I am a request of pid %d and tid %ld!\n",
+        getpid(), pthread_self());
 
     pthread_exit(0);
 }
