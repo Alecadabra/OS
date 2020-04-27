@@ -4,6 +4,7 @@
 
 #include "Lift.h"
 #include "Request.h"
+#include "Buffer.h"
 
 #define NUM_LIFTS 3
 
@@ -21,9 +22,9 @@ int main(int argc, char* argv[])
         /* Buffer size, given in args */
     int t;
         /* Time taken for lift to move, given in args */
-    int thread_error;
+    int threadError;
         /* Return value of pthread_create(), nonzero if in error */
-    int** buffer;
+    buffer* buff;
         /* The buffer */
 
     /* Handle command line arguments */
@@ -35,23 +36,22 @@ int main(int argc, char* argv[])
     m = atoi(argv[1]);
     t = atoi(argv[2]);
 
-    /* Allocate memory for buffer */
-    buffer = (int**)malloc(m * sizeof(int*));
-    for(i = 0; i < m; i++) buffer[i] = (int*)malloc(2 * sizeof(int));
+    /* Create buffer */
+    buff = buffer_create(m);
 
     /* Thread creation */
     printf("Main is initialising thread of request\n");
-    thread_error = pthread_create(
+    threadError = pthread_create(
         &requestThread, /* pthread_t ptr to request thread */
         NULL,           /* attr, NULL means use default attributes*/
         request,        /* function ptr to start routine request() */
-        &buffer         /* argument to give to lift() - ptr to buffer */
+        (void*)buff     /* argument to give to lift() - ptr to the buffer */
     );
 
     /* Check for errors */
-    if(thread_error)
+    if(threadError)
     {
-        printf("Error: pthread_create error number %d\n", thread_error);
+        printf("Error: pthread_create error number %d\n", threadError);
         pthread_exit(NULL);
     }
 
@@ -60,14 +60,13 @@ int main(int argc, char* argv[])
         printf("Main is initialising thread of lift %ld\n", j + 1);
 
         /* Populate lift input struct */
-        liftInputs[i]            = (liftInput*)malloc(sizeof(liftInput));
-        liftInputs[i]->bufferPtr = &buffer;
-        liftInputs[i]->liftNum   = j + 1;
-        liftInputs[i]->m         = m;
-        liftInputs[i]->t         = t;
+        liftInputs[i]          = (liftInput*)malloc(sizeof(liftInput));
+        liftInputs[i]->buffer  = buff;
+        liftInputs[i]->liftNum = j + 1;
+        liftInputs[i]->t       = t;
 
         /* Create thread */
-        thread_error = pthread_create(
+        threadError = pthread_create(
             &liftThreads[j],     /* pthread_t ptr */
             NULL,                /* attr, NULL means use default attributes*/
             lift,                /* function ptr to start routine lift() */
@@ -75,9 +74,9 @@ int main(int argc, char* argv[])
         );
         
         /* Check for errors */
-        if(thread_error)
+        if(threadError)
         {
-            printf("Error: pthread_create error number %d\n", thread_error);
+            printf("Error: pthread_create error number %d\n", threadError);
             pthread_exit(NULL);
         }
     }

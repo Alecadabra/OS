@@ -3,10 +3,9 @@
     #define LIFT_H
 
     typedef struct {
-        int*** bufferPtr; /* Ptr to buffer that stores floor requests */
-        int m;            /* Setting of buffer size */
-        int t;            /* Setting of time taken for lift to move */
+        buffer* buffer;   /* Ptr to buffer that stores floor requests */
         int liftNum;      /* This lift's number */
+        int t;            /* Setting of time taken for lift to move */
     } liftInput;
 
     void* lift(void*);
