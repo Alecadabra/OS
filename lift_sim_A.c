@@ -8,24 +8,27 @@
 
 #define NUM_LIFTS 3
 
+buffer* buff;
+    /* The buffer */
+int t;
+    /* Time taken for lift to move, given in args */
+pthread_mutex_t buffMutex;
+    /* Mutex variable for buff */
+
 int main(int argc, char* argv[])
 {
     pthread_t liftThreads[NUM_LIFTS];
         /* Threads for lifts 0, 1 & 2 */
-    liftInput* liftInputs[NUM_LIFTS];
-        /* Lift input structs for parameter of lift() */
     pthread_t requestThread;
         /* Thread for request */
+    int liftNums[NUM_LIFTS];
+        /* Numbers 1 to NUM_LIFTS */
     int i;
-        /* For loop indexes */
+        /* For loop index */
     int m;
         /* Buffer size, given in args */
-    int t;
-        /* Time taken for lift to move, given in args */
     int threadError;
         /* Return value of pthread_create(), nonzero if in error */
-    buffer* buff;
-        /* The buffer */
 
     /* Handle command line arguments */
     if(argc != 3)
@@ -39,13 +42,15 @@ int main(int argc, char* argv[])
     /* Create buffer */
     buff = buffer_create(m);
 
+    pthread_mutex_init(&buffMutex, NULL);
+
     /* Thread creation */
     printf("Main is initialising thread of request\n");
     threadError = pthread_create(
         &requestThread, /* pthread_t ptr to request thread */
         NULL,           /* attr, NULL means use default attributes*/
         request,        /* function ptr to start routine request() */
-        (void*)buff     /* argument to give to lift() - ptr to the buffer */
+        NULL            /* argument to give to lift() - ptr to the buffer */
     );
 
     /* Check for errors */
@@ -59,18 +64,17 @@ int main(int argc, char* argv[])
     {
         printf("Main is initialising thread of lift %d\n", i + 1);
 
-        /* Populate lift input struct */
-        liftInputs[i]          = (liftInput*)malloc(sizeof(liftInput));
-        liftInputs[i]->buffer  = buff;
-        liftInputs[i]->liftNum = i + 1;
-        liftInputs[i]->t       = t;
+        liftNums[i] = i + 1;
+            /* If we just passed &i to the lift, i might increment before the
+            lift set's its lift number to *i, so we must allocate a separate
+            int for each lift */
 
         /* Create thread */
         threadError = pthread_create(
-            &liftThreads[i],     /* pthread_t ptr */
-            NULL,                /* attr, NULL means use default attributes*/
-            lift,                /* function ptr to start routine lift() */
-            (void*)liftInputs[i] /* argument to give to lift() - lift input */
+            &liftThreads[i],    /* pthread_t ptr */
+            NULL,               /* attr, NULL means use default attributes*/
+            lift,               /* function ptr to start routine lift() */
+            (void*)&liftNums[i] /* argument to give to lift() - lift number */
         );
         
         /* Check for errors */
@@ -81,59 +85,78 @@ int main(int argc, char* argv[])
         }
     }
 
-    /* 
-    wait util buffer->completed for all threads
+    pthread_join(requestThread, NULL);
+    for(i = 0; i < NUM_LIFTS; i++) pthread_join(liftThreads[i], NULL);
+    
     buffer_free(buff);
-    */
+    pthread_mutex_destroy(&buffMutex);
 
     pthread_exit(NULL);
 }
 
-void* lift(void* liftInputVoidPtr)
+void* lift(void* liftNumPtr)
 {
-    liftInput* input = (liftInput*)liftInputVoidPtr;
-    /*buffer* buff     = input->buffer;*/
-    int liftNum      = input->liftNum;
-    /*int t            = input->t;*/
-    free(input);
+    int liftNum = *((int*)liftNumPtr);
 
     printf("I am lift %d of pid %d and tid %ld!\n",
         liftNum, getpid(), pthread_self());
+
+    while(!buffer_isComplete(buff))
+    {
+        /* Wait until buffer not empty */
+        /* Wait until buffer lock is obtained */
+        /* Dequeue one entry from buffer */
+        /* Unlock buffer */
+        /* Wait t seconds */
+        /* Change current floor to srcFloor */
+        /* Wait t seconds */
+        /* Change current floor to destFloor */        
+    }
     
-    /*
-    while buffer not completed
-        wait until buffer not empty
-        wait until buffer lock is obtained
-        dequeue one entry from buffer
-        unlock buffer
-        wait t seconds
-        change current floor to srcFloor
-        wait t seconds
-        change current floor to destFloor
-    mark lift as completed
-    */
+    printf("Lift %d is done\n", liftNum);
 
     pthread_exit(0);
 }
 
-void* request(void* bufferVoidPtr)
+void* request(void* nullPtr)
 {
-    /* buffer* buff = (buffer*)bufferVoidPtr; */
+    FILE* file;
 
     printf("I am a request of pid %d and tid %ld!\n",
         getpid(), pthread_self());
 
-    /*
-    while not end of file
-        wait until buffer is not full
-        wait until sim_input lock is obtained
-        read one line from sim_input
-        unlock sim_input
-        wait until buffer lock is obtained
-        enqueue once into buffer
-        unlock buffer
-    mark buffer as completed
-    */    
+    /* File opening */
+    file = fopen("sim_input", "r");
+
+    if(file == NULL)
+    {
+        perror("Error, file could not be opened");
+        buffer_setComplete(buff);
+        pthread_exit(0);
+    }
+    else if(ferror(file))
+    {
+        perror("Error in opening file");
+        fclose(file);
+        buffer_setComplete(buff);
+        pthread_exit(0);
+    }
+
+    while(!feof(file))
+    {
+        /* Wait until buffer is not full */
+        /* Wait until sim_input lock is obtained */
+        /* Read one line from sim_input */
+        /* Unlock sim_input */
+        /* Wait until buffer lock is obtained */
+        /* Enqueue once into the buffer */
+        /* Unlock buffer */
+        break;
+    }
+
+    printf("Requester is done\n");
+    buffer_setComplete(buff);
+    fclose(file);
 
     pthread_exit(0);
 }

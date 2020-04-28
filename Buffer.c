@@ -7,11 +7,12 @@ buffer* buffer_create(int m)
     buffer* buff = (buffer*)malloc(sizeof(buffer));
     int i;
 
-    buff->size  = m;
-    buff->count = 0;
-    buff->start = 0;
-    buff->end   = 0;
-    buff->array = (int**)malloc(buff->size * sizeof(int*));
+    buff->size     = m;
+    buff->count    = 0;
+    buff->start    = 0;
+    buff->end      = 0;
+    buff->complete = 0;
+    buff->array    = (int**)malloc(buff->size * sizeof(int*));
     for(i = 0; i < buff->size; i++)
         buff->array[i] = (int*)malloc(2 * sizeof(int));
 
@@ -26,6 +27,11 @@ int buffer_isEmpty(buffer* buff)
 int buffer_isFull(buffer* buff)
 {
     return buff->count == buff->size;
+}
+
+int buffer_isComplete(buffer* buff)
+{
+    return buff->complete;
 }
 
 int buffer_enqueue(buffer* buff, int srcNum, int destNum)
@@ -72,6 +78,11 @@ int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
     }
     
     return 1;
+}
+
+void buffer_setComplete(buffer* buff)
+{
+    buff->complete = 1;
 }
 
 void buffer_free(buffer* buff)
