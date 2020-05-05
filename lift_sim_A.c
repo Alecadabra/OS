@@ -18,8 +18,6 @@ pthread_cond_t buffFullCond;
     /* Condition variable for full buffer */
 pthread_cond_t buffEmptyCond;
     /* Condition variable for empty buffer */
-pthread_cond_t finishedCond;
-    /* Condition variable for if the buffer is empty and requester is done */
 
 int main(int argc, char* argv[])
 {
@@ -46,13 +44,12 @@ int main(int argc, char* argv[])
     t = atoi(argv[2]);
 
     /* Create buffer */
-    buff = buffer_create(m);
+    buff = buffer_init(m);
 
     /* Create mutex and condition variables */
     pthread_mutex_init(&buffMutex, NULL);
     pthread_cond_init(&buffFullCond, NULL);
     pthread_cond_init(&buffEmptyCond, NULL);
-    pthread_cond_init(&finishedCond, NULL);
 
     /* Thread creation */
     printf("Main is initialising thread of request\n");
@@ -98,11 +95,10 @@ int main(int argc, char* argv[])
     pthread_join(requestThread, NULL);
     for(i = 0; i < NUM_LIFTS; i++) pthread_join(liftThreads[i], NULL);
     
-    buffer_free(buff);
+    buffer_destroy(buff);
     pthread_mutex_destroy(&buffMutex);
     pthread_cond_destroy(&buffEmptyCond);
     pthread_cond_destroy(&buffFullCond);
-    pthread_cond_destroy(&finishedCond);
 
     pthread_exit(NULL);
 }
@@ -112,18 +108,16 @@ void* lift(void* liftNumPtr)
     int liftNum = *((int*)liftNumPtr);
     int flr = 0, srcFlr, destFlr;
         /* Current floor, source floor, destination floor */
-    int err;
-        /* Error number returned by buffer_dequeue */
 
     printf("I am lift %d of pid %d and tid %ld!\n",
         liftNum, getpid(), pthread_self());
 
-    while(!buffer_isComplete(buff))
+    while(!checkIfFinished())
     {
         /* Obtain mutex lock on buffer */
         pthread_mutex_lock(&buffMutex);
 
-        if(buffer_isComplete(buff))
+        if(buffer_isComplete(buff) && buffer_isEmpty(buff))
         {
             pthread_mutex_unlock(&buffMutex);
             break;
@@ -137,6 +131,7 @@ void* lift(void* liftNumPtr)
 
         /* Dequeue once from buffer */
         buffer_dequeue(buff, &srcFlr, &destFlr);
+        printf("Lift %d is dequeueing %d %d\n", liftNum, srcFlr, destFlr);
 
         if(!buffer_isFull(buff))
         {
@@ -210,8 +205,9 @@ void* request(void* nullPtr)
 
         /* Enqueue once into the buffer */
         printf("Requester is enqueueing %d %d onto the buffer\n",
-            srcFlr, destFlr);
+            srcFlr, destFlr );
         buffer_enqueue(buff, srcFlr, destFlr);
+        buffer_print(buff);
 
         if(!buffer_isEmpty(buff))
         {
@@ -223,13 +219,23 @@ void* request(void* nullPtr)
         pthread_mutex_unlock(&buffMutex);
     }
 
-    if(!buffer_isEmpty(buff))
-    {
-        pthread_cond_wait(&buffFullCond)
-    }
     printf("Requester is done\n");
     buffer_setComplete(buff);
     fclose(file);
 
     pthread_exit(0);
+}
+
+int checkIfFinished()
+{
+    int finished = 0;
+
+    pthread_mutex_lock(&buffMutex);
+    if(buffer_isComplete(buff) && buffer_isEmpty(buff))
+    {
+        finished = 1;
+    }
+    pthread_mutex_unlock(&buffMutex);
+
+    return finished;
 }

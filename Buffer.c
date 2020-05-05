@@ -1,8 +1,9 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "Buffer.h"
 
-buffer* buffer_create(int m)
+buffer* buffer_init(int m)
 {
     buffer* buff = (buffer*)malloc(sizeof(buffer));
     int i;
@@ -37,7 +38,7 @@ int buffer_isComplete(buffer* buff)
 int buffer_enqueue(buffer* buff, int srcNum, int destNum)
 {
     /* First make sure buffer is not full */
-    if(buffer_isFull(buff)) return 1;
+    if(buffer_isFull(buff)) return 0;
 
     buff->array[buff->end][0] = srcNum;
     buff->array[buff->end][1] = destNum;
@@ -54,13 +55,13 @@ int buffer_enqueue(buffer* buff, int srcNum, int destNum)
         buff->end++;
     }
     
-    return 0;
+    return 1;
 }
 
 int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
 {
     /* First make sure buffer is not empty */
-    if(buffer_isEmpty(buff)) return 1;
+    if(buffer_isEmpty(buff)) return 0;
 
     *srcNum = buff->array[buff->start][0];
     *destNum = buff->array[buff->start][1];
@@ -77,7 +78,7 @@ int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
         buff->start++;
     }
     
-    return 0;
+    return 1;
 }
 
 void buffer_setComplete(buffer* buff)
@@ -85,11 +86,23 @@ void buffer_setComplete(buffer* buff)
     buff->complete = 1;
 }
 
-void buffer_free(buffer* buff)
+void buffer_destroy(buffer* buff)
 {
     int i;
 
     for(i = 0; i < buff->size; i++) free(buff->array[i]);
     free(buff->array);
     free(buff);
+}
+
+void buffer_print(buffer* buff)
+{
+    int i;
+
+    printf("[");
+    for(i = 0; i < buff->size; i++)
+    {
+        printf("(%d, %d) ", buff->array[i][0], buff->array[i][1]);
+    }
+    printf("]\n");
 }

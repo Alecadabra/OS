@@ -2,7 +2,9 @@
 
     #define LIFT_SIM_A_H
 
-    void* lift(void*);
-    void* request(void*);
+    /* Function foward declarations */
+    void* lift           (void*);
+    void* request        (void*);
+    int   checkIfFinished();
 
 #endif
