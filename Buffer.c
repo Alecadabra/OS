@@ -37,7 +37,7 @@ int buffer_isComplete(buffer* buff)
 int buffer_enqueue(buffer* buff, int srcNum, int destNum)
 {
     /* First make sure buffer is not full */
-    if(buffer_isFull(buff)) return 0;
+    if(buffer_isFull(buff)) return 1;
 
     buff->array[buff->end][0] = srcNum;
     buff->array[buff->end][1] = destNum;
@@ -54,13 +54,13 @@ int buffer_enqueue(buffer* buff, int srcNum, int destNum)
         buff->end++;
     }
     
-    return 1;
+    return 0;
 }
 
 int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
 {
     /* First make sure buffer is not empty */
-    if(buffer_isEmpty(buff)) return 0;
+    if(buffer_isEmpty(buff)) return 1;
 
     *srcNum = buff->array[buff->start][0];
     *destNum = buff->array[buff->start][1];
@@ -77,7 +77,7 @@ int buffer_dequeue(buffer* buff, int* srcNum, int* destNum)
         buff->start++;
     }
     
-    return 1;
+    return 0;
 }
 
 void buffer_setComplete(buffer* buff)
