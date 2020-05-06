@@ -13,7 +13,6 @@ buffer* buffer_init(int m)
     buff->start    = 0;
     buff->end      = 0;
     buff->complete = 0;
-    buff->totMove  = 0;
     buff->array    = (int**)malloc(buff->size * sizeof(int*));
     for(i = 0; i < buff->size; i++)
         buff->array[i] = (int*)malloc(2 * sizeof(int));
