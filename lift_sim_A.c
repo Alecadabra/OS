@@ -8,35 +8,22 @@
 
 #define NUM_LIFTS 3
 
-buffer* buff;
-    /* The buffer */
-int t;
-    /* Time taken for lift to move, given in args */
-pthread_mutex_t logMutex;
-    /* Mutex lock for accessing sim_out file */
-pthread_mutex_t buffMutex;
-    /* Mutex lock for accessing buffer */
-pthread_cond_t buffFullCond;
-    /* Condition variable for full buffer */
-pthread_cond_t buffEmptyCond;
-    /* Condition variable for empty buffer */
+buffer*         buff;          /* The buffer */
+FILE*           sim_out;       /* Shared file ptr to sim_out for logging */
+int             t;             /* Time taken for lift to move, given in args */
+pthread_mutex_t logMutex;      /* Mutex lock for accessing sim_out file */
+pthread_mutex_t buffMutex;     /* Mutex lock for accessing buffer */
+pthread_cond_t  buffFullCond;  /* Condition variable for full buffer */
+pthread_cond_t  buffEmptyCond; /* Condition variable for empty buffer */
 
 int main(int argc, char* argv[])
 {
-    pthread_t liftThreads[NUM_LIFTS];
-        /* Threads for lifts 0, 1 & 2 */
-    pthread_t requestThread;
-        /* Thread for request */
-    int liftNums[NUM_LIFTS];
-        /* Numbers 1 to NUM_LIFTS */
-    int i;
-        /* For loop index */
-    int m;
-        /* Buffer size, given in args */
-    int threadError;
-        /* Return value of pthread_create(), nonzero if in error */
-    FILE* sim_out;
-        /* File ptr to sim_out to clear the file before making threads */
+    pthread_t liftThreads[NUM_LIFTS]; /* Threads for lifts 0, 1 & 2 */
+    pthread_t requestThread; /* Thread for request */
+    int liftNums[NUM_LIFTS]; /* Numbers 1 to NUM_LIFTS */
+    int i; /* For loop index */
+    int m; /* Buffer size, given in args */
+    int threadError; /* Return value of pthread_create() */
 
     /* Handle command line arguments */
     if(argc != 3)
@@ -56,14 +43,22 @@ int main(int argc, char* argv[])
     pthread_cond_init(&buffFullCond, NULL);
     pthread_cond_init(&buffEmptyCond, NULL);
 
-    /* Clear out sim_out */
-    sim_out = openFile("sim_out", "w");
-    if(sim_out == NULL) pthread_exit(NULL);
-    fprintf(sim_out, "");
-    fclose(sim_out);
+    /* Clear open sim_out */
+    sim_out = fopen("sim_out", "w");
+    if(sim_out == NULL)
+    {
+        perror("Error, file could not be opened");
+        pthread_exit(NULL);
+    }
+    else if(ferror(sim_out))
+    {
+        perror("Error in opening file");
+        fclose(sim_out);
+        sim_out = NULL;
+        pthread_exit(NULL);
+    }
 
     /* Thread creation */
-    printf("Main is initialising thread of request\n");
     threadError = pthread_create(
         &requestThread, /* pthread_t ptr to request thread */
         NULL,           /* attr, NULL means use default attributes*/
@@ -80,8 +75,6 @@ int main(int argc, char* argv[])
 
     for(i = 0; i < NUM_LIFTS; i++)
     {
-        printf("Main is initialising thread of lift %d\n", i + 1);
-
         liftNums[i] = i + 1;
             /* If we just passed &i to the lift, i might increment before the
             lift set's its lift number to *i, so we must allocate a separate
@@ -107,6 +100,7 @@ int main(int argc, char* argv[])
     for(i = 0; i < NUM_LIFTS; i++) pthread_join(liftThreads[i], NULL);
     
     buffer_destroy(buff);
+    fclose(sim_out);
     pthread_mutex_destroy(&logMutex);
     pthread_mutex_destroy(&buffMutex);
     pthread_cond_destroy(&buffEmptyCond);
@@ -117,17 +111,12 @@ int main(int argc, char* argv[])
 
 void* lift(void* liftNumPtr)
 {
+    /* This lift's number, 1 to NUM_LIFTS */
     int liftNum = *((int*)liftNumPtr);
+    /* Current floor, source floor, destination floor */
     int flr = 0, srcFlr, destFlr;
-        /* Current floor, source floor, destination floor */
-    FILE* sim_out;
-        /* File ptr to sim_out to append logs to */
-
-    printf("I am lift %d of pid %d and tid %ld!\n",
-        liftNum, getpid(), pthread_self());
-    
-    sim_out = openFile("sim_out", "a");
-    if(sim_out == NULL) pthread_exit(1);
+    /* File ptr to sim_out to append logs to */
+    int requestNum = 0, move = 0, totMove = 0;
 
     while(!checkIfFinished())
     {
@@ -148,7 +137,6 @@ void* lift(void* liftNumPtr)
 
         /* Dequeue once from buffer */
         buffer_dequeue(buff, &srcFlr, &destFlr);
-        printf("Lift %d is dequeueing %d %d\n", liftNum, srcFlr, destFlr);
 
         if(!buffer_isFull(buff))
         {
@@ -158,6 +146,29 @@ void* lift(void* liftNumPtr)
 
         /* Unlock buffer mutex */
         pthread_mutex_unlock(&buffMutex);
+
+        /* Calculate values for sim_out */
+        move = abs(flr - srcFlr) + abs(srcFlr - destFlr);
+        totMove += move;
+        requestNum++;
+
+        /* Obtain lock for appending to sim_out */
+        pthread_mutex_lock(&logMutex);
+
+        /* Write log to sim_out */
+        fprintf(sim_out, "Lift-%d Operation\n", liftNum);
+        fprintf(sim_out, "Previous position: Floor %d\n", flr);
+        fprintf(sim_out, "Request: Floor %d to Floor %d\n", srcFlr, destFlr);
+        fprintf(sim_out, "Deatil operations:\n");
+        fprintf(sim_out, "\tGo from Floor %d to Floor %d\n", flr, srcFlr);
+        fprintf(sim_out, "\tGo from Floor %d to Floor %d\n", srcFlr, destFlr);
+        fprintf(sim_out, "\t#movement for this request: %d\n", move);
+        fprintf(sim_out, "\t#request: %d\n", requestNum);
+        fprintf(sim_out, "\tTotal #movement: %d\n", totMove);
+        fprintf(sim_out, "Current position: Floor %d\n\n", destFlr);
+
+        /* Release lock on sim_out */
+        pthread_mutex_unlock(&logMutex);
         
         printf("Lift %d moving from floor %d to floor %d\n",
             liftNum, flr, srcFlr);
@@ -172,9 +183,6 @@ void* lift(void* liftNumPtr)
 
         /* Change current floor to destFloor */
         flr = destFlr;
-
-        /* Obtain lock for reading to sim_out */
-        pthread_mutex_lock(&logMutex);
     }
     
     printf("Lift %d is done\n", liftNum);
@@ -184,26 +192,34 @@ void* lift(void* liftNumPtr)
 
 void* request(void* nullPtr)
 {
-    FILE* file;
-        /* sim_out file ptr */
-    int srcFlr, destFlr;
-        /* Source floor and destination floor read from file */
+    FILE* sim_in; /* sim_input file ptr */
+    int srcFlr, destFlr; /* Source floor and destination floor read from file */
+    int requestNum = 0; /* Number of requests enqueued */
 
     printf("I am a request of pid %d and tid %ld!\n",
         getpid(), pthread_self());
 
     /* File opening */
-    file = openFile("sim_input", "r");
-    if(file == NULL)
+    sim_in = fopen("sim_input", "r");
+    if(sim_in == NULL)
     {
+        perror("Error, file could not be opened");
         buffer_setComplete(buff);
         pthread_exit(0);
     }
+    else if(ferror(sim_in))
+    {
+        perror("Error in opening file");
+        buffer_setComplete(buff);
+        fclose(sim_in);
+        sim_in = NULL;
+        pthread_exit(0);
+    }
 
-    while(!feof(file))
+    while(!feof(sim_in))
     {
         /* Read one line from sim_input */
-        fscanf(file, "%d %d", &srcFlr, &destFlr);
+        fscanf(sim_in, "%d %d", &srcFlr, &destFlr);
 
         /* Obtain mutex lock on buffer */
         pthread_mutex_lock(&buffMutex);
@@ -215,8 +231,6 @@ void* request(void* nullPtr)
         }
 
         /* Enqueue once into the buffer */
-        printf("Requester is enqueueing %d %d onto the buffer\n",
-            srcFlr, destFlr );
         buffer_enqueue(buff, srcFlr, destFlr);
         buffer_print(buff);
 
@@ -228,11 +242,22 @@ void* request(void* nullPtr)
 
         /* Unlock buffer mutex */
         pthread_mutex_unlock(&buffMutex);
+
+        /* Obtain mutex lock for sim_out */
+        pthread_mutex_lock(&logMutex);
+
+        fprintf(sim_out, "--------------------------------------------\n");
+        fprintf(sim_out, "New Lift Request From Floor %d to Floor %d\n",
+            srcFlr, destFlr);
+        fprintf(sim_out, "Request No: %d\n", requestNum);
+        fprintf(sim_out, "--------------------------------------------\n\n");
+
+        /* Unlock sim_out mutex */
+        pthread_mutex_unlock(&logMutex);
     }
 
-    printf("Requester is done\n");
     buffer_setComplete(buff);
-    fclose(file);
+    fclose(sim_in);
 
     pthread_exit(0);
 }
@@ -249,22 +274,4 @@ int checkIfFinished()
     pthread_mutex_unlock(&buffMutex);
 
     return finished;
-}
-
-FILE* openFile(char fileName[], char mode[])
-{
-    FILE* file = fopen(fileName, mode);
-
-    if(file == NULL)
-    {
-        perror("Error, file could not be opened");
-    }
-    else if(ferror(file))
-    {
-        perror("Error in opening file");
-        fclose(file);
-        file = NULL;
-    }
-
-    return file;
 }

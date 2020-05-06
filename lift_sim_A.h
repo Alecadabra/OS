@@ -6,5 +6,6 @@
     void* lift           (void*);
     void* request        (void*);
     int   checkIfFinished();
+    FILE* openFile       (char [], char []);
 
 #endif

@@ -1,0 +1,64 @@
+--------------------------------------------
+New Lift Request From Floor 1 to Floor 5
+Request No: 0
+--------------------------------------------
+
+Lift-1 Operation
+Previous position: Floor 0
+Request: Floor 1 to Floor 5
+Deatil operations:
+	Go from Floor 0 to Floor 1
+	Go from Floor 1 to Floor 5
+	#movement for this request: 5
+	#request: 1
+	Total #movement: 5
+Current position: Floor 5
+
+--------------------------------------------
+New Lift Request From Floor 7 to Floor 2
+Request No: 0
+--------------------------------------------
+
+Lift-2 Operation
+Previous position: Floor 0
+Request: Floor 7 to Floor 2
+Deatil operations:
+	Go from Floor 0 to Floor 7
+	Go from Floor 7 to Floor 2
+	#movement for this request: 12
+	#request: 1
+	Total #movement: 12
+Current position: Floor 2
+
+--------------------------------------------
+New Lift Request From Floor 3 to Floor 8
+Request No: 0
+--------------------------------------------
+
+Lift-3 Operation
+Previous position: Floor 0
+Request: Floor 3 to Floor 8
+Deatil operations:
+	Go from Floor 0 to Floor 3
+	Go from Floor 3 to Floor 8
+	#movement for this request: 8
+	#request: 1
+	Total #movement: 8
+Current position: Floor 8
+
+--------------------------------------------
+New Lift Request From Floor 4 to Floor 11
+Request No: 0
+--------------------------------------------
+
+Lift-1 Operation
+Previous position: Floor 5
+Request: Floor 4 to Floor 11
+Deatil operations:
+	Go from Floor 5 to Floor 4
+	Go from Floor 4 to Floor 11
+	#movement for this request: 8
+	#request: 2
+	Total #movement: 13
+Current position: Floor 11
+
