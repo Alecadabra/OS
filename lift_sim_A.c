@@ -9,14 +9,14 @@
 #define LIFTS 3 /* Number of lifts */
 
 buffer*         buff;              /* The buffer                              */
-FILE*           sim_out;           /* Shared file ptr to sim_out for logging  */
-int             globalTotMoves;    /* Total number of moves done by lifts     */
-int             globalTotRequests; /* Total number of requests handled        */
-pthread_mutex_t logMutex;          /* Mutex lock for accessing sim_out file   */
 pthread_mutex_t buffMutex;         /* Mutex lock for accessing buffer         */
 pthread_cond_t  buffFull;          /* Condition variable for full buffer      */
 pthread_cond_t  buffEmpty;         /* Condition variable for empty buffer     */
+FILE*           sim_out;           /* Shared file ptr to sim_out for logging  */
+pthread_mutex_t logMutex;          /* Mutex lock for accessing sim_out file   */
 int             t;                 /* Time taken to move lift, given in args  */
+int             globalTotMoves;    /* Total number of moves done by lifts     */
+int             globalTotRequests; /* Total number of requests handled        */
 
 int main(int argc, char* argv[])
 {
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
 void* lift(void* liftNumPtr)
 {
     int liftNum;          /* This lift's number, 1 to LIFTS                   */
-    int flr          = 0; /* Current floor                                    */
+    int flr          = 1; /* Current floor                                    */
     int srcFlr;           /* Source floor of current request                  */
     int destFlr;          /* Destination floor of current request             */
     int requestNum   = 0; /* Number of requests served                        */
@@ -244,6 +244,16 @@ void* request(void* nullPtr)
     {
         /* Read one line from sim_input */
         fscanf(sim_in, "%d %d", &srcFlr, &destFlr);
+
+        /* Make sure read values are legal */
+        if(srcFlr < 1 || srcFlr > 20 || destFlr < 1 || destFlr > 20)
+        {
+            fprintf(stderr, "Illegal floor values of %d %d in sim_input\n",
+                srcFlr, destFlr);
+            buffer_setComplete(buff);
+            fclose(sim_in);
+            pthread_exit(0);
+        }
 
         /* Obtain mutex lock on buffer */
         pthread_mutex_lock(&buffMutex);
