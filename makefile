@@ -4,7 +4,6 @@
 
 gcc = gcc -Wall -ansi -Werror -pedantic -pthread
 execA = lift_sim_A
-execB = lift_sim_B
 all = Buffer.o ${execA}
 
 all: ${all}

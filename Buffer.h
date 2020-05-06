@@ -5,12 +5,12 @@
     /* Buffer struct */
     typedef struct
     {
-        int** array;    /* 2D malloc Array, size [size][2] */
-        int   size;     /* Size of 1st dimension of array */
-        int   start;    /* Index of starting element */
-        int   end;      /* Index of last element */
-        int   count;    /* Number of populated elements */
-        int   complete; /* Boolean if requester is finished */
+        int** array;    /* 2D malloc Array, size [size][2]                    */
+        int   size;     /* Size of 1st dimension of array                     */
+        int   start;    /* Index of starting element                          */
+        int   end;      /* Index of last element                              */
+        int   count;    /* Number of populated elements                       */
+        int   complete; /* Boolean if requester is finished                   */
     } buffer;
 
     /* Function forward declarations */
