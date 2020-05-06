@@ -21,4 +21,7 @@ ${execA} : ${execA}.c ${execA}.h Buffer.o
 clean :
 	rm ${all}
 
-# NOTE - Remove -g flag
+# Run
+
+a : clean all
+	./lift_sim_A 50 0

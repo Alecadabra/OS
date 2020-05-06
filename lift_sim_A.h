@@ -3,9 +3,7 @@
     #define LIFT_SIM_A_H
 
     /* Function foward declarations */
-    void* lift           (void*);
-    void* request        (void*);
-    int   checkIfFinished();
-    FILE* openFile       (char [], char []);
+    void* lift    (void*);
+    void* request (void*);
 
 #endif

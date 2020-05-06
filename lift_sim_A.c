@@ -26,6 +26,31 @@ int main(int argc, char* argv[])
     int       i;                  /* For loop index                           */
     int       m;                  /* Buffer size, given in args               */
     int       threadError;        /* Return value of pthread_create()         */
+    FILE*     sim_in;             /* sim_input file to count lines of         */
+    int       lineNo = 0;         /* Number of lines counted in sim_input     */
+
+    /* Count lines in sim_input */
+    sim_in = fopen("sim_input", "r");
+    if(sim_in == NULL)
+    {
+        perror("Error, sim_input file could not be opened");
+        pthread_exit(NULL);
+    }
+    else if(ferror(sim_in))
+    {
+        perror("Error in opening sim_input");
+        fclose(sim_in);
+        sim_in = NULL;
+        pthread_exit(NULL);
+    }
+    while(!feof(sim_in)) if(fgetc(sim_in) == '\n') lineNo++;
+    fclose(sim_in);
+    if(lineNo < 50 || lineNo > 100)
+    {
+        fprintf(stderr,
+            "Error: number of lines in sim_input must be between 50 and 100\n");
+        pthread_exit(NULL);
+    }
 
     /* Handle command line arguments */
     if(argc != 3)
@@ -49,12 +74,12 @@ int main(int argc, char* argv[])
     sim_out = fopen("sim_out", "w");
     if(sim_out == NULL)
     {
-        perror("Error, file could not be opened");
+        perror("Error, sim_out file could not be opened");
         pthread_exit(NULL);
     }
     else if(ferror(sim_out))
     {
-        perror("Error in opening file");
+        perror("Error in opening sim_out");
         fclose(sim_out);
         sim_out = NULL;
         pthread_exit(NULL);
@@ -69,7 +94,8 @@ int main(int argc, char* argv[])
     );
     if(threadError)
     {
-        printf("Error: pthread_create error number %d\n", threadError);
+        fprintf(stderr, "Error: pthread_create error number %d\n",
+            threadError);
         pthread_exit(NULL);
     }
 
@@ -124,32 +150,28 @@ void* lift(void* liftNumPtr)
     int destFlr;          /* Destination floor of current request             */
     int requestNum   = 0; /* Number of requests served                        */
     int move         = 0; /* Number of floors moved this request              */
-    int totMoves = 0; /* Total number of floors moved                     */
+    int totMoves     = 0; /* Total number of floors moved                     */
+    int done         = 0; /* Boolean for the lift being finished              */
 
     /* Assign lift number from void* parameter */
     liftNum = *((int*)liftNumPtr);
 
-    while(!checkIfFinished())
+    while(!done)
     {
-        /* Mutex lock on buffer already obtained by checkIfFinished() */
+        /* Obtain lock for buffer */
+        pthread_mutex_lock(&buffMutex);
 
-        if(buffer_isEmpty(buff))
-        {
-            /* Wait if the buffer is empty */
-            pthread_cond_wait(&buffEmpty, &buffMutex);
-        }
+        /* Wait if the buffer is empty */
+        if(buffer_isEmpty(buff)) pthread_cond_wait(&buffEmpty, &buffMutex);
 
         /* Dequeue once from buffer */
         buffer_dequeue(buff, &srcFlr, &destFlr);
 
-        if(!buffer_isFull(buff))
-        {
-            /* Stop request() from waiting if the buffer is not full */
-            pthread_cond_signal(&buffFull);
-        }
-
         /* Unlock buffer mutex */
         pthread_mutex_unlock(&buffMutex);
+
+        /* Stop request() from waiting */
+        pthread_cond_signal(&buffFull);
 
         /* Calculate values for sim_out */
         move = abs(flr - srcFlr) + abs(srcFlr - destFlr);
@@ -184,6 +206,11 @@ void* lift(void* liftNumPtr)
         /* Move from current floor to destFloor */
         sleep(t);
         flr = destFlr;
+
+        /* Check if we need to loop again */
+        pthread_mutex_lock(&buffMutex);
+        if(buffer_isEmpty(buff) && buffer_isComplete(buff)) done = 1;
+        pthread_mutex_unlock(&buffMutex);
     }
 
     pthread_exit(0);
@@ -192,21 +219,21 @@ void* lift(void* liftNumPtr)
 /* Represents Lift-R, producer thread that enqueues requests onto the buffer  */
 void* request(void* nullPtr)
 {
-    FILE* sim_in;         /* sim_input file ptr                               */
-    int   srcFlr;         /* Destination floor read from sim_in               */
-    int   destFlr;        /* Source floor read from sim_in                    */
+    FILE* sim_in;  /* sim_input file ptr                                      */
+    int   srcFlr;  /* Destination floor read from sim_in                      */
+    int   destFlr; /* Source floor read from sim_in                           */
 
-    /* File opening */
+    /* Open sim_input */
     sim_in = fopen("sim_input", "r");
     if(sim_in == NULL)
     {
-        perror("Error, file could not be opened");
+        perror("Error, sim_input file could not be opened");
         buffer_setComplete(buff);
         pthread_exit(0);
     }
     else if(ferror(sim_in))
     {
-        perror("Error in opening file");
+        perror("Error in opening sim_input");
         buffer_setComplete(buff);
         fclose(sim_in);
         sim_in = NULL;
@@ -221,24 +248,17 @@ void* request(void* nullPtr)
         /* Obtain mutex lock on buffer */
         pthread_mutex_lock(&buffMutex);
 
-        if(buffer_isFull(buff))
-        {
-            /* Wait if the buffer is full */
-            pthread_cond_wait(&buffFull, &buffMutex);
-        }
+        /* Wait if the buffer is full */
+        if(buffer_isFull(buff)) pthread_cond_wait(&buffFull, &buffMutex);
 
         /* Enqueue once into the buffer */
         buffer_enqueue(buff, srcFlr, destFlr);
-        buffer_print(buff);
-
-        if(!buffer_isEmpty(buff))
-        {
-            /* Wake up lifts if the buffer is no longer empty */
-            pthread_cond_signal(&buffEmpty);
-        }
 
         /* Unlock buffer mutex */
         pthread_mutex_unlock(&buffMutex);
+
+        /* Wake up lifts */
+        pthread_cond_signal(&buffEmpty);
 
         /* Increment global total num of requests */
         globalTotRequests++;
@@ -246,6 +266,7 @@ void* request(void* nullPtr)
         /* Obtain mutex lock for sim_out */
         pthread_mutex_lock(&logMutex);
 
+        /* Print to sim_out */
         fprintf(sim_out, "--------------------------------------------\n");
         fprintf(sim_out, "New Lift Request From Floor %d to Floor %d\n",
             srcFlr, destFlr);
@@ -256,27 +277,10 @@ void* request(void* nullPtr)
         pthread_mutex_unlock(&logMutex);
     }
 
+    /* Set lifts to close once the buffer is empty */
     buffer_setComplete(buff);
+
     fclose(sim_in);
 
-    /* Obtain mutex lock for sim_out */
-    pthread_mutex_lock(&logMutex);
-
     pthread_exit(0);
-}
-
-/* Used by lift() to check if the buffer is empty and the requester is done
- * before proceeding                                                          */
-int checkIfFinished()
-{
-    int finished = 0;
-
-    pthread_mutex_lock(&buffMutex);
-    if(buffer_isComplete(buff) && buffer_isEmpty(buff))
-    {
-        finished = 1;
-        pthread_mutex_unlock(&buffMutex);
-    }
-    
-    return finished;
 }
