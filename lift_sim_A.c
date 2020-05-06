@@ -6,7 +6,7 @@
 #include "Buffer.h"
 #include "lift_sim_A.h"
 
-#define NUM_LIFTS 3 /* Number of lifts */
+#define LIFTS 3 /* Number of lifts */
 
 buffer*         buff;        /* The buffer                                    */
 FILE*           sim_out;     /* Shared file ptr to sim_out for logging        */
