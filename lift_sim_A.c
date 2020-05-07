@@ -20,7 +20,7 @@ int             globalTotRequests; /* Total number of requests handled        */
 
 int main(int argc, char* argv[])
 {
-    pthread_t liftThreads[LIFTS]; /* Threads for lifts 0, 1 & 2               */
+    pthread_t liftThreads[LIFTS]; /* Threads for lifts 1 to LIFTS             */
     pthread_t requestThread;      /* Thread for request                       */
     int       liftNums[LIFTS];    /* Numbers 1 to LIFTS for lift() parameter  */
     int       i;                  /* For loop index                           */
