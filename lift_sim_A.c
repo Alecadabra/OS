@@ -13,7 +13,7 @@ pthread_mutex_t buffMutex;         /* Mutex lock for accessing buffer         */
 pthread_cond_t  buffFull;          /* Condition variable for full buffer      */
 pthread_cond_t  buffEmpty;         /* Condition variable for empty buffer     */
 FILE*           sim_out;           /* Shared file ptr to sim_out for logging  */
-pthread_mutex_t logMutex;          /* Mutex lock for accessing sim_out file   */
+pthread_mutex_t logMutex;          /* Mutex lock for sim_out and globalTot's  */
 int             t;                 /* Time taken to move lift, given in args  */
 int             globalTotMoves;    /* Total number of moves done by lifts     */
 int             globalTotRequests; /* Total number of requests handled        */
@@ -184,11 +184,11 @@ void* lift(void* liftNumPtr)
         totMoves += move;
         requestNum++;
 
-        /* Increment global total moves */
-        globalTotMoves += move;
-
         /* Obtain lock for appending to sim_out */
         pthread_mutex_lock(&logMutex);
+
+        /* Increment global total moves, uses logMutex */
+        globalTotMoves += move;
 
         /* Write log to sim_out */
         fprintf(sim_out, "Lift-%d Operation\n",                liftNum        );
@@ -276,11 +276,11 @@ void* request(void* nullPtr)
         /* Wake up lifts */
         pthread_cond_signal(&buffEmpty);
 
-        /* Increment global total num of requests */
-        globalTotRequests++;
-
         /* Obtain mutex lock for sim_out */
         pthread_mutex_lock(&logMutex);
+        
+        /* Increment global total num of requests, uses logMutex */
+        globalTotRequests++;
 
         /* Print to sim_out */
         fprintf(sim_out, "--------------------------------------------\n");
