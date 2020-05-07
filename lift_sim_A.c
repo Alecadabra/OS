@@ -294,7 +294,10 @@ void* request(void* nullPtr)
     }
 
     /* Set lifts to close once the buffer is empty */
+
+    pthread_mutex_lock(&buffMutex);
     buffer_setComplete(buff);
+    pthread_mutex_unlock(&buffMutex);
 
     fclose(sim_in);
 
