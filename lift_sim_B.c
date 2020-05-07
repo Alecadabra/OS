@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h> 
 #include <sys/shm.h> 
 #include <sys/stat.h> 
 #include <semaphore.h>
 #include <errno.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include "Buffer.h"
 #include "lift_sim_B.h"
@@ -17,13 +19,11 @@
 
 int main(int argc, char* argv[])
 {
+    semaphores sem;
     sem_t buffMutex; /* Mutex lock for accessing buffer */
     sem_t buffFull; /* Condition variable for full buffer */
     sem_t buffEmpty; /* Condition variable for empty buffer */
     sem_t logMutex; /* Mutex lock for accessing sim_out file */
-
-
-    sem_t buffMutex;
     buffer* buff; /* The buffer */
     FILE* sim_out;  /* Shared file ptr to sim_out for logging */
     int t; /* Time taken to move lift, given in args */
@@ -36,6 +36,8 @@ int main(int argc, char* argv[])
     int forkVal; /* Return value of fork() */
     FILE* sim_in; /* sim_input file to count lines of */
     int lineNo = 0; /* Number of lines counted in sim_input */
+    int bufferFd; /* Shared memory file descriptor for buffer */
+    buffer** buffPtr;
 
     /* Handle command line arguments */
     if(argc != 3)
@@ -75,14 +77,18 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    /* Create buffer */
-    buff = buffer_init(m);
-
     /* Initialise semaphores */
     sem_init(&buffMutex, 1, 1); /* 0 when buffer is being used, > 0 when free */
     sem_init(&buffFull,  1, m); /* 0 when full, > 0 when empty slots */
     sem_init(&buffEmpty, 1, 0); /* 0 when empty, > 0 when full slots */
     sem_init(&logMutex,  1, 1); /* 0 when file is being used, > 0 when free */
+
+    /* Set up shared memory for buffer */
+    bufferFd = shm_open(BUFFER_NAME, O_CREAT | O_RDWR, 0666);
+    ftruncate(bufferFd, sizeof(buffer**));
+    buffPtr = (buffer**)mmap(0, sizeof(buffer**), PROT_READ | PROT_WRITE,
+        MAP_SHARED, bufferFd, 0);
+    *buffPtr = buffer_init(m);
 
     /* Open sim_out logging file and check for errors */
     sim_out = fopen("sim_out", "w");
@@ -148,7 +154,7 @@ int main(int argc, char* argv[])
 
     /* Print final stats to sim_out */
     fprintf(sim_out, "Total number of requests: %d\n", globalTotRequests);
-    fprintf(sim_out, "Total number of movements: %d\n" globalTotMoves);
+    fprintf(sim_out, "Total number of movements: %d\n", globalTotMoves);
     
     /* Close file and free heap memory */
     fclose(sim_out);
@@ -234,7 +240,7 @@ void lift(int liftNum)
 }
 
 /* Represents Lift-R, producer thread that enqueues requests onto the buffer  */
-void* request(void* nullPtr)
+void request()
 {
     FILE* sim_in;  /* sim_input file ptr                                      */
     int   srcFlr;  /* Destination floor read from sim_in                      */

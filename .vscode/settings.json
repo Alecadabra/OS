@@ -3,6 +3,7 @@
         80
     ],
     "files.associations": {
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "shm.h": "c"
     }
 }
