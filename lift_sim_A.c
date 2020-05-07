@@ -29,6 +29,21 @@ int main(int argc, char* argv[])
     FILE*     sim_in;             /* sim_input file to count lines of         */
     int       lineNo = 0;         /* Number of lines counted in sim_input     */
 
+    /* Handle command line arguments */
+    if(argc != 3)
+    {
+        fprintf(stderr, "Error: Invalid number of arguments\n");
+        pthread_exit(NULL);
+    }
+    m = atoi(argv[1]);
+    t = atoi(argv[2]);
+    if(m < 1 || t < 0)
+    {
+        fprintf(stderr, "Error, invalid given values of m = %d and t = %d\n",
+            m, t);
+        pthread_exit(NULL);
+    }
+
     /* Count lines in sim_input */
     sim_in = fopen("sim_input", "r");
     if(sim_in == NULL)
@@ -51,15 +66,6 @@ int main(int argc, char* argv[])
             "Error: number of lines in sim_input must be between 50 and 100\n");
         pthread_exit(NULL);
     }
-
-    /* Handle command line arguments */
-    if(argc != 3)
-    {
-        fprintf(stderr, "Error: Invalid number of arguments\n");
-        pthread_exit(NULL);
-    }
-    m = atoi(argv[1]);
-    t = atoi(argv[2]);
 
     /* Create buffer */
     buff = buffer_init(m);
