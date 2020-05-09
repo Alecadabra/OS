@@ -2,6 +2,9 @@
 
     #define BUFFER_H
 
+    #define BUFF_NAME "/lift_buffer"
+    #define ARRAY_NAME "/lift_buffer_array"
+
     /* Buffer struct */
     typedef struct
     {
@@ -14,13 +17,15 @@
     } buffer;
 
     /* Function forward declarations */
-    buffer* buffer_init       (int);
-    int     buffer_isEmpty    (buffer*);
-    int     buffer_isFull     (buffer*);
-    int     buffer_isComplete (buffer*);
-    int     buffer_enqueue    (buffer*, int,  int );
-    int     buffer_dequeue    (buffer*, int*, int*);
-    void    buffer_setComplete(buffer*);
-    void    buffer_destroy    (buffer*);
+    buffer* buffer_init           (int);
+    buffer* buffer_init_process   (int);
+    int     buffer_isEmpty        (buffer*);
+    int     buffer_isFull         (buffer*);
+    int     buffer_isComplete     (buffer*);
+    int     buffer_enqueue        (buffer*, int,  int );
+    int     buffer_dequeue        (buffer*, int*, int*);
+    void    buffer_setComplete    (buffer*);
+    void    buffer_destroy        (buffer*);
+    void    buffer_destroy_process(buffer*);
 
 #endif
