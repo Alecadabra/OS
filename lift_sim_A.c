@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
 
     /* Print final stats to sim_out */
     fprintf(sim_out, "Total number of requests: %d\n", globalTotRequests);
-    fprintf(sim_out, "Total number of movements: %d\n" globalTotMoves);
+    fprintf(sim_out, "Total number of movements: %d\n", globalTotMoves);
     
     /* Close file and free heap memory */
     fclose               (sim_out);
