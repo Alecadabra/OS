@@ -194,7 +194,7 @@ void* lift(void* liftNumPtr)
         fprintf(sim_out, "Lift-%d Operation\n",                liftNum        );
         fprintf(sim_out, "Previous position: Floor %d\n",      flr            );
         fprintf(sim_out, "Request: Floor %d to Floor %d\n",    srcFlr, destFlr);
-        fprintf(sim_out, "Deatil operations:\n"                               );
+        fprintf(sim_out, "Detail operations:\n"                               );
         fprintf(sim_out, "\tGo from Floor %d to Floor %d\n",   flr,    srcFlr );
         fprintf(sim_out, "\tGo from Floor %d to Floor %d\n",   srcFlr, destFlr);
         fprintf(sim_out, "\t#movement for this request: %d\n", move           );
