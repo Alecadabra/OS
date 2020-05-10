@@ -3,7 +3,8 @@
     #define LIFT_SIM_B_H
 
     /* Function foward declarations */
-    void* lift    (void*);
-    void* request (void*);
+
+    void lift   (int, int);
+    void request();
 
 #endif

@@ -5,6 +5,11 @@
     "files.associations": {
         "cstdlib": "c",
         "lift_sim_a.h": "c",
-        "buffer.h": "c"
+        "buffer.h": "c",
+        "shm.h": "c",
+        "lift_sim_b.h": "c",
+        "mman.h": "c",
+        "stdio.h": "c",
+        "unistd.h": "c"
     }
 }
