@@ -3,6 +3,8 @@
         80
     ],
     "files.associations": {
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "lift_sim_a.h": "c",
+        "buffer.h": "c"
     }
 }
