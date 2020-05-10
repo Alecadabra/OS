@@ -29,16 +29,15 @@ int main(int argc, char* argv[])
     int m; /* Buffer size, given in args */
     int t; /* Time taken to move lift, given in args */
     pid_t forkVal; /* Return value of fork() */
-    FILE* sim_in; /* sim_input file to count lines of */
+    /*FILE* sim_in; *//* sim_input file to count lines of */
     FILE* sim_out; /* sim_out file ptr to write final stats to */
-    int lineNo = 0; /* Number of lines counted in sim_input */
-    int fd; /* Shared memory file descriptor used for various variables */
+    /*int lineNo = 0;*/ /* Number of lines counted in sim_input */
     buffer* buff; /* The buffer */
-    int* fd_buff; /* File descriptors for buffer shared memory */
+    int* fd_buffArr; /* File descriptors for buffer shared memory */
     int* sharedTotMoves;
-    int fd_totMoves; /* File descriptor for sharedTotMoves shared memory */
+    int fd_totMoves; /* File descriptor for sharedTotMoves */
     int* sharedTotRequests;
-    int fd_totRequests; /* File descriptor for sharedTotRequests shared memory */
+    int fd_totRequests; /* File descriptor for sharedTotRequests */
     sem_t* buffMutex; /* Mutex lock for accessing buffer */
     sem_t* buffFull; /* Condition variable for full buffer */
     sem_t* buffEmpty; /* Condition variable for empty buffer */
@@ -59,6 +58,7 @@ int main(int argc, char* argv[])
     }
 
     /* Count lines in sim_input */
+    /*
     sim_in = fopen("sim_input", "r");
     if(sim_in == NULL)
     {
@@ -79,54 +79,42 @@ int main(int argc, char* argv[])
         perror("Error, sim_input must be between 50 and 100 lines");
         return 1;
     }
-
-    if(errno != 0) perror("Main error 1");
+    */
 
     /* Clear out sim_out since we are appending to it */
     remove("sim_out");
-    if(errno != 0) perror("Main error 2");
 
     /* Initialise semaphores */
-    buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME, O_CREAT, 0644, 1); /* 0 when buffer is being used, > 0 when free */
+    buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME, O_CREAT | O_EXCL, 0666, 1); /* 0 when buffer is being used, > 0 when free */
     if(buffMutex == SEM_FAILED) perror("BuffMutex failed");
-    buffFull = (sem_t*)sem_open(SEM_FULL_NAME, O_CREAT, 0644, m); /* 0 when full, > 0 when empty slots */
+    buffFull = (sem_t*)sem_open(SEM_FULL_NAME, O_CREAT | O_EXCL, 0666, m); /* 0 when full, > 0 when empty slots */
     if(buffFull == SEM_FAILED) perror("BuffFull failed");
-    buffEmpty = (sem_t*)sem_open(SEM_EMPTY_NAME, O_CREAT, 0644, 0); /* 0 when empty, > 0 when full slots */
+    buffEmpty = (sem_t*)sem_open(SEM_EMPTY_NAME, O_CREAT | O_EXCL, 0666, 0); /* 0 when empty, > 0 when full slots */
     if(buffEmpty == SEM_FAILED) perror("BuffEmpty failed");
-    logMutex = (sem_t*)sem_open(SEM_LOG_NAME, O_CREAT, 0644, 1); /* 0 when file is being used, > 0 when free */
+    logMutex = (sem_t*)sem_open(SEM_LOG_NAME, O_CREAT | O_EXCL, 0666, 1); /* 0 when file is being used, > 0 when free */
     if(logMutex == SEM_FAILED) perror("LogMutex failed");
-    /* Alternative method
-    fd = shm_open(SEM_BUFF_NAME, O_CREAT, O_RDWR);
-    ftruncate(fd, sizeof(sem_t));
-    buffMutex = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
-    sem_init(buffMutex, 1, 1); */
-    if(errno != 0) perror("Main error 3");
 
     /* Initialise buffer */ 
-    fd_buff = (int*)malloc(m * sizeof(int) + 2);
-    buff = buffer_init_process(m, &fd_buff);
-    
-    if(errno != 0) perror("Main error 4");
+    fd_buffArr = (int*)malloc((m + 2) * sizeof(int));
+    buff = buffer_init_process(m, fd_buffArr);
 
     /* Set up shared memory for total moves an requests */
-    fd = shm_open(TOT_MOVES_NAME, O_CREAT | O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on main moves counter");
-    ftruncate(fd, sizeof(int));
+    fd_totMoves = shm_open(TOT_MOVES_NAME, O_CREAT | O_RDWR, 0666);
+    if(fd_totMoves == -1) perror("Open failed on main moves counter");
+    ftruncate(fd_totMoves, sizeof(int));
     sharedTotMoves = (int*)mmap(0, sizeof(int), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_totMoves, 0);
     if(sharedTotMoves == MAP_FAILED) perror(
         "Map failed on main move counter");
     *sharedTotMoves = 0;
-    fd = shm_open(TOT_REQUESTS_NAME, O_CREAT | O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on main request counter");
-    ftruncate(fd, sizeof(int));
+    fd_totRequests = shm_open(TOT_REQUESTS_NAME, O_CREAT | O_RDWR, 0666);
+    if(fd_totRequests == -1) perror("Open failed on main request counter");
+    ftruncate(fd_totRequests, sizeof(int));
     sharedTotRequests = (int*)mmap(0, sizeof(int), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_totRequests, 0);
     if(sharedTotRequests == MAP_FAILED) perror(
         "Map failed on main request counter");
     *sharedTotRequests = 0;
-    if(errno != 0) perror("Main error 5");
 
     /* Request process creation and error checking */
     forkVal = fork();
@@ -147,41 +135,33 @@ int main(int argc, char* argv[])
         /* You are the parent */
         requestID = forkVal;
     }
-    if(errno != 0) perror("Main error 6");
 
     /* Lift process creation and error checking */
     for(i = 0; i < LIFTS; i++)
     {
-        if(errno != 0) perror("Main error 6.1");
         forkVal = fork();
         if(forkVal == -1)
         {
             /* Error */
-            if(errno != 0) perror("Main error 6.2");
             perror("Error, fork failed");
             return 1;
         }
         if(forkVal == 0)
         {
-            if(errno != 0) perror("Main error 6.3");
             /* You are the child */
             lift(i + 1, t);
             return 0;
         }
         else
         {
-            if(errno != 0) perror("Main error 6.4");
             /* You are the parent */
             liftIDs[i] = forkVal;
         }
-        if(errno != 0) perror("Main error 6.5");
     }
-    if(errno != 0) perror("Main error 7");
 
     /* Wait until all processes terminate before cleaning up */
     waitpid(requestID, NULL, 0);
     for(i = 0; i < LIFTS; i++) waitpid(liftIDs[i], NULL, 0);
-    if(errno != 0) perror("Main error 8");
 
     /* Print final stats to sim_out */
     sim_out = fopen("sim_out", "a");
@@ -200,22 +180,31 @@ int main(int argc, char* argv[])
     fprintf(sim_out, "Total number of requests: %d\n", *sharedTotRequests);
     fprintf(sim_out, "Total number of movements: %d\n", *sharedTotMoves);
     fclose(sim_out);
-    if(errno != 0) perror("Main error 9");
     
     /* Clean up */
-    sem_destroy(buffMutex);
-    sem_destroy(buffFull);
-    sem_destroy(buffEmpty);
-    sem_destroy(logMutex);
-    shm_unlink(SEM_BUFF_NAME);
-    shm_unlink(SEM_FULL_NAME);
-    shm_unlink(SEM_EMPTY_NAME);
-    shm_unlink(SEM_LOG_NAME);
-    shm_unlink(TOT_MOVES_NAME);
-    shm_unlink(TOT_REQUESTS_NAME);
-    shm_unlink(BUFF_NAME);
-    buffer_destroy_process(buff);
-    if(errno != 0) perror("Main error 10");
+    if(munmap(sharedTotMoves, sizeof(int)) == -1) perror("Munmap error totMoves");
+    if(munmap(sharedTotRequests, sizeof(int)) == -1) perror("Munmap error totRequests");
+    if(munmap(buffMutex, sizeof(sem_t)) == -1) perror("Munmap error buffMutex");
+    if(munmap(buffFull, sizeof(sem_t)) == -1) perror("Munmap error buffFull");
+    if(munmap(buffEmpty, sizeof(sem_t)) == -1) perror("Munmap error buffEmpty");
+    if(munmap(logMutex, sizeof(sem_t)) == -1) perror("Munmap error logMutex");
+
+    if(close(fd_totMoves) == -1) perror("Close error totMoves");
+    if(close(fd_totRequests) == -1) perror("Close error totReq");
+    if(sem_close(buffMutex) == -1) perror("Close error bufffMutex");
+    if(sem_close(buffFull) == -1) perror("Close error buffFull");
+    if(sem_close(buffEmpty) == -1) perror("Close error buffEmpty");
+    if(sem_close(logMutex) == -1) perror("Close error logMutex");
+
+    if(sem_unlink(SEM_BUFF_NAME) == -1) perror("Unlink error sem buff");
+    if(sem_unlink(SEM_FULL_NAME) == -1) perror("Unlink error sem full");
+    if(sem_unlink(SEM_EMPTY_NAME) == -1) perror("Unlink error sem empty");
+    if(sem_unlink(SEM_LOG_NAME) == -1) perror("Unlink error sem log");
+    if(shm_unlink(TOT_MOVES_NAME) == -1) perror("Unlink error tot moves");
+    if(shm_unlink(TOT_REQUESTS_NAME) == -1) perror("Unlink error tot requests");
+
+    buffer_destroy_process(buff, fd_buffArr);
+    free(fd_buffArr);
 
     return 0;
 }
@@ -231,8 +220,9 @@ void lift(int liftNum, int t)
     int move = 0; /* Number of floors moved this request */
     int totMoves = 0; /* Total number of floors moved */
     int done = 0; /* Boolean for the lift being finished */
-    int fd; /* File descriptor used to open buffer and tot moves */
+    int fd_buff;
     buffer* buff;
+    int fd_totMoves;
     int* sharedTotMoves;
     sem_t* buffMutex; /* Mutex lock for accessing buffer */
     sem_t* buffFull; /* Condition variable for full buffer */
@@ -240,20 +230,21 @@ void lift(int liftNum, int t)
     sem_t* logMutex; /* Mutex lock for accessing sim_out file */
     FILE* sim_out;
 
-    printf("Check it out! I'm a lift\n");
-    if(errno != 0) perror("Lift error");
-
     /* Set up buffer */
-    fd = shm_open(BUFF_NAME, O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on lift buffer");
+    fd_buff = shm_open(BUFF_NAME, O_RDWR, 0666);
+    if(fd_buff == -1) perror("Open failed on lift buffer");
     buff = (buffer*)mmap(0, sizeof(buffer), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_buff, 0);
+    if(buff == MAP_FAILED) perror(
+        "Map failed on lift buffer");
 
     /* Set up shared total moves counter */
-    fd = shm_open(TOT_MOVES_NAME, O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on lift moves counter");
+    fd_totMoves = shm_open(TOT_MOVES_NAME, O_RDWR, 0666);
+    if(fd_totMoves == -1) perror("Open failed on lift moves counter");
     sharedTotMoves = (int*)mmap(0, sizeof(int), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_totMoves, 0);
+    if(sharedTotMoves == MAP_FAILED) perror(
+        "Map failed on lift moves counter");
 
     /* Open semaphores */
     buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME, 0);
@@ -267,15 +258,19 @@ void lift(int liftNum, int t)
 
     while(!done)
     {
-        /* Obtain lock for buffer */
-        sem_wait(buffMutex);
-
         /* Wait if the buffer is empty */
         sem_wait(buffEmpty);
 
+        /* Obtain lock for buffer */
+        sem_wait(buffMutex);
+
         /* Dequeue once from buffer */
         if(!buffer_dequeue(buff, &srcFlr, &destFlr))
+        {
             perror("Buffer dequeue failed");
+            sem_post(buffMutex);
+            return;
+        }
 
         /* Unlock buffer mutex */
         sem_post(buffMutex);
@@ -338,10 +333,15 @@ void lift(int liftNum, int t)
     }
 
     /* Clean up */
-    shm_unlink(BUFF_NAME);
-    shm_unlink(TOT_MOVES_NAME);
+    munmap(buff, sizeof(buffer));
+    munmap(sharedTotMoves, sizeof(int));
 
-    if(errno != 0) perror("Lift error");
+    sem_close(buffMutex);
+    sem_close(buffFull);
+    sem_close(buffEmpty);
+    sem_close(logMutex);
+    close(fd_totMoves);
+    close(fd_buff);
 }
 
 /* Represents Lift-R, producer thread that enqueues requests onto the buffer  */
@@ -350,29 +350,32 @@ void request()
     FILE* sim_in;  /* sim_input file ptr                                      */
     int   srcFlr;  /* Destination floor read from sim_in                      */
     int   destFlr; /* Source floor read from sim_in                           */
+    int fd_buff;
     buffer* buff;
+    int fd_totRequests;
     int* sharedTotRequests;
     sem_t* buffMutex; /* Mutex lock for accessing buffer */
     sem_t* buffFull; /* Condition variable for full buffer */
     sem_t* buffEmpty; /* Condition variable for empty buffer */
     sem_t* logMutex; /* Mutex lock for accessing sim_out file */
     FILE* sim_out;
-    int fd;
-    
-    printf("Check it out! I'm a request!\n");
-    if(errno != 0) perror("Request error");
+    int i;
 
     /* Set up buffer */
-    fd = shm_open(BUFF_NAME, O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on request buffer");
+    fd_buff = shm_open(BUFF_NAME, O_RDWR, 0666);
+    if(fd_buff == -1) perror("Open failed on request buffer");
     buff = (buffer*)mmap(0, sizeof(buffer), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_buff, 0);
+    if(buff == MAP_FAILED) perror(
+        "Map failed on requester buffer");
 
     /* Set up shared total request counter */
-    fd = shm_open(TOT_REQUESTS_NAME, O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on request counter");
+    fd_totRequests = shm_open(TOT_REQUESTS_NAME, O_RDWR, 0666);
+    if(fd_totRequests == -1) perror("Open failed on request counter");
     sharedTotRequests = (int*)mmap(0, sizeof(int), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd_totRequests, 0);
+    if(buff == MAP_FAILED) perror(
+        "Map failed on requester's total counter");
 
     /* Open semaphores */
     buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME, 0);
@@ -409,26 +412,30 @@ void request()
         /* Make sure read values are legal */
         if(srcFlr < 1 || srcFlr > 20 || destFlr < 1 || destFlr > 20)
         {
-            perror("Illegal floor values of %d %d in sim_input\n",
-                srcFlr, destFlr);
+            perror("Illegal floor values in sim_input");
             buffer_setComplete(buff);
             fclose(sim_in);
             return;
         }
 
-        /* Obtain mutex lock on buffer */
-        sem_wait(buffMutex);
-
         /* Wait if the buffer is full */
         sem_wait(buffFull);
 
+        /* Obtain mutex lock on buffer */
+        sem_wait(buffMutex);
+
         /* Enqueue once into the buffer */
-        buffer_enqueue(buff, srcFlr, destFlr);
+        if(!buffer_enqueue(buff, srcFlr, destFlr))
+        {
+            perror("Buffer enqueue failed");
+            sem_post(buffMutex);
+            return;
+        }
 
         /* Unlock buffer mutex */
         sem_post(buffMutex);
 
-        /* Wake up lifts */
+        /* Wake up a lift */
         sem_post(buffEmpty);
 
         /* Obtain mutex lock for sim_out */
@@ -464,11 +471,18 @@ void request()
 
     /* Set lifts to close once the buffer is empty */
     buffer_setComplete(buff);
+    for(i = 0; i < LIFTS; i++) sem_post(buffEmpty);
 
     /* Clean up */
     fclose(sim_in);
-    shm_unlink(BUFF_NAME);
-    shm_unlink(TOT_REQUESTS_NAME);
 
-    if(errno != 0) perror("Request error");
+    munmap(buff, sizeof(buff));
+    munmap(sharedTotRequests, sizeof(int));
+
+    sem_close(buffMutex);
+    sem_close(buffFull);
+    sem_close(buffEmpty);
+    sem_close(logMutex);
+    close(fd_buff);
+    close(fd_totRequests);
 }

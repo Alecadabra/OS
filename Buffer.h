@@ -14,7 +14,6 @@
         int   tail;     /* Index of last element                              */
         int   count;    /* Number of populated elements                       */
         int   complete; /* Boolean if requester is finished                   */
-        int*  fd;       /* FDs of shared memory, NULL if not shared memory    */
     } buffer;
 
     /* Function forward declarations */
@@ -27,6 +26,6 @@
     int     buffer_dequeue        (buffer*, int*, int*);
     void    buffer_setComplete    (buffer*);
     void    buffer_destroy        (buffer*);
-    void    buffer_destroy_process(buffer*);
+    void    buffer_destroy_process(buffer*, int*);
 
 #endif

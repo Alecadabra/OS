@@ -2,12 +2,14 @@
 #include <sys/mman.h>
 #include <sys/stat.h>        /* For mode constants */
 #include <fcntl.h>
+#include <stdlib.h>
 
 #include "Buffer.h"
 
 int main()
 {
-    buffer* buff = buffer_init_process(2);
+    int* fd = (int*)malloc((2 + 2) * sizeof(int));
+    buffer* buff = buffer_init_process(2, fd);
     int a, b;
 
     buffer_enqueue(buff, 1, 2);
@@ -34,6 +36,8 @@ int main()
     printf("%d, %d\n", a, b);
     buffer_dequeue(buff, &a, &b);
     printf("%d, %d\n", a, b);
+
+    buffer_destroy_process(buff, fd);
 
     return 0;
 }

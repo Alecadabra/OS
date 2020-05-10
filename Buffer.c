@@ -24,7 +24,6 @@ buffer* buffer_init(int m)
     buff->head     = 0;
     buff->tail     = 0;
     buff->complete = 0;
-    buff->fd       = NULL;
 
     for(i = 0; i < buff->size; i++)
         buff->array[i] = (int*)malloc(2 * sizeof(int));
@@ -40,28 +39,28 @@ buffer* buffer_init_process(int m, int* fd)
     char entry_str[32];
 
     /* Allocate the buffer */
-    fd = shm_open(BUFF_NAME, O_CREAT | O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on buffer");
-    ftruncate(fd, sizeof(buffer));
+    fd[0] = shm_open(BUFF_NAME, O_CREAT | O_RDWR, 0666);
+    if(fd[0] == -1) perror("Open failed on buffer");
+    if(ftruncate(fd[0], sizeof(buffer)) == -1) perror("Buff truncate");
     buff = (buffer*)mmap(0, sizeof(buffer), PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd[0], 0);
     if(buff == MAP_FAILED) perror("Map failed on buffer");
     
     /* Allocate the array */
-    fd = shm_open(ARRAY_NAME, O_CREAT | O_RDWR, 0666);
-    if(fd == -1) perror("Open failed on buffer array");
-    ftruncate(fd, sizeof(int*) * m);
+    fd[1] = shm_open(ARRAY_NAME, O_CREAT | O_RDWR, 0666);
+    if(fd[1] == -1) perror("Open failed on buffer array");
+    ftruncate(fd[1], sizeof(int*) * m);
     buff->array = (int**)mmap(0, sizeof(int*) * m, PROT_READ | PROT_WRITE,
-        MAP_SHARED, fd, 0);
+        MAP_SHARED, fd[1], 0);
     if(buff->array == MAP_FAILED) perror("Map failed on buffer array");
     for(i = 0; i < m; i++)
     {
         sprintf(entry_str, "%s_entry_%d", ARRAY_NAME, i);
-        fd = shm_open(entry_str, O_CREAT | O_RDWR, 0666);
-        if(fd == -1) perror("Open failed on buffer array i");
-        ftruncate(fd, sizeof(int) * 2);
+        fd[i+2] = shm_open(entry_str, O_CREAT | O_RDWR, 0666);
+        if(fd[i+2] == -1) perror("Open failed on buffer array i");
+        ftruncate(fd[i+2], sizeof(int) * 2);
         buff->array[i] = (int*)mmap(0, sizeof(int) * 2, PROT_READ | PROT_WRITE,
-            MAP_SHARED, fd, 0);
+            MAP_SHARED, fd[i+2], 0);
         if(buff->array[i] == MAP_FAILED) perror("Map failed on buffer array i");
     }
 
@@ -71,7 +70,6 @@ buffer* buffer_init_process(int m, int* fd)
     buff->head     = 0;
     buff->tail     = 0;
     buff->complete = 0;
-    buff->fd = NULL;
 
     return buff;
 }
@@ -150,7 +148,7 @@ void buffer_destroy(buffer* buff)
 }
 
 /* Clean up all asscociated memory of a buffer */
-void buffer_destroy_process(buffer* buff)
+void buffer_destroy_process(buffer* buff, int* fd)
 {
     int i;
     char entry_str[32];
@@ -158,9 +156,25 @@ void buffer_destroy_process(buffer* buff)
     for(i = 0; i < buff->size; i++)
     {
         sprintf(entry_str, "%s_entry_%d", ARRAY_NAME, i);
-        shm_unlink(entry_str);
+
+        if(munmap(buff->array[i], sizeof(int*)) == -1)
+            perror("Munmap error on buffer array element");
+
+        if(close(fd[i+2]) == -1) perror("Close error on buffer array element");
+
+        if(shm_unlink(entry_str) == -1) perror("Unlink error on array elem");
     }
-    shm_unlink(ARRAY_NAME);
-    shm_unlink(BUFF_NAME);
-    buff = NULL;
+    if(munmap(buff->array, sizeof(int**)) == -1)
+        perror("Munmap error on buffer array");
+    if(close(fd[1]) == -1)
+        perror("Close error on buffer array");
+    if(shm_unlink(ARRAY_NAME) == -1)
+        perror("Unlink error on buffer array");
+
+    if(munmap(buff, sizeof(buffer)) == -1)
+        perror("Munmap error on buffer");
+    if(close(fd[0]) == -1)
+        perror("Close error on buffer");
+    if(shm_unlink(BUFF_NAME) == -1)
+        perror("Unlink error on buffer");
 }

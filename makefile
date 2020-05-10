@@ -2,7 +2,7 @@
 
 # Makefile variables
 
-gcc   = gcc -Wall -ansi -Werror -pedantic #-g ################################
+gcc   = gcc -Wall -ansi -Werror -pedantic -g ################################
 link = -lrt -pthread
 execA = lift_sim_A
 execB = lift_sim_B
@@ -22,7 +22,7 @@ ${execB} : ${execB}.c ${execB}.h Buffer.o
 	${gcc} ${execB}.c Buffer.o -o ${execB} ${link}
 
 test : test.c Buffer.o
-	${gcc} -pthread Buffer.o test.c  -o test ${link}
+	${gcc} Buffer.o test.c  -o test ${link}
 
 # Clean
 
@@ -34,5 +34,6 @@ clean :
 a : clean all
 	./lift_sim_A 50 0
 
-b : clean all ${execB}
-	./lift_sim_B 50 0
+b : ${execB}
+	valgrind --leak-check=full --track-origins=yes ./lift_sim_B 5 0
+	ipcs -m

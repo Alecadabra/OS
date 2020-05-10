@@ -10,6 +10,7 @@
         "lift_sim_b.h": "c",
         "mman.h": "c",
         "stdio.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "stat.h": "c"
     }
 }

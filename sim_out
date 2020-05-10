@@ -1,0 +1,82 @@
+--------------------------------------------
+New Lift Request From Floor 1 to Floor 5
+Request No: 1
+--------------------------------------------
+
+Lift-1 Operation
+Previous position: Floor 1
+Request: Floor 1 to Floor 5
+Detail operations:
+	Go from Floor 1 to Floor 1
+	Go from Floor 1 to Floor 5
+	#movement for this request: 4
+	#request: 1
+	Total #movement: 4
+Current position: Floor 5
+
+--------------------------------------------
+New Lift Request From Floor 7 to Floor 2
+Request No: 2
+--------------------------------------------
+
+Lift-2 Operation
+Previous position: Floor 1
+Request: Floor 7 to Floor 2
+Detail operations:
+	Go from Floor 1 to Floor 7
+	Go from Floor 7 to Floor 2
+	#movement for this request: 11
+	#request: 1
+	Total #movement: 11
+Current position: Floor 2
+
+--------------------------------------------
+New Lift Request From Floor 3 to Floor 8
+Request No: 3
+--------------------------------------------
+
+--------------------------------------------
+New Lift Request From Floor 1 to Floor 5
+Request No: 4
+--------------------------------------------
+
+Lift-3 Operation
+Previous position: Floor 1
+Request: Floor 3 to Floor 8
+Detail operations:
+	Go from Floor 1 to Floor 3
+	Go from Floor 3 to Floor 8
+	#movement for this request: 7
+	#request: 1
+	Total #movement: 7
+Current position: Floor 8
+
+Lift-1 Operation
+Previous position: Floor 5
+Request: Floor 1 to Floor 5
+Detail operations:
+	Go from Floor 5 to Floor 1
+	Go from Floor 1 to Floor 5
+	#movement for this request: 8
+	#request: 2
+	Total #movement: 12
+Current position: Floor 5
+
+--------------------------------------------
+New Lift Request From Floor 7 to Floor 2
+Request No: 5
+--------------------------------------------
+
+Lift-2 Operation
+Previous position: Floor 2
+Request: Floor 7 to Floor 2
+Detail operations:
+	Go from Floor 2 to Floor 7
+	Go from Floor 7 to Floor 2
+	#movement for this request: 10
+	#request: 2
+	Total #movement: 21
+Current position: Floor 2
+
+Total number of requests: 5
+Total number of movements: 40
