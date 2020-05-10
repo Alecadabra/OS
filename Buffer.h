@@ -2,8 +2,8 @@
 
     #define BUFFER_H
 
-    #define BUFF_NAME "/lift_buffer"
-    #define ARRAY_NAME "/lift_buffer_array"
+    #define BUFF_NAME  "/lift_buffer"       /* Shared name of buffer          */
+    #define ARRAY_NAME "/lift_buffer_array" /* Shared name of array in buffer */
 
     /* Buffer struct */
     typedef struct

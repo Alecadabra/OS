@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     int       m;                  /* Buffer size, given in args               */
     int       threadError;        /* Return value of pthread_create()         */
     FILE*     sim_in;             /* sim_input file to count lines of         */
-    int       lineNo = 0;         /* Number of lines counted in sim_input     */
+    int       lineNo         = 0; /* Number of lines counted in sim_input     */
 
     /* Handle command line arguments */
     if(argc != 3)

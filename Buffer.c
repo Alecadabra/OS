@@ -151,7 +151,7 @@ void buffer_destroy(buffer* buff)
 void buffer_destroy_process(buffer* buff, int* fd)
 {
     int i;
-    char entry_str[32];
+    char entry_str[32]; /* Name of each 2nd dimension array in buff->array */
 
     for(i = 0; i < buff->size; i++)
     {
