@@ -32,15 +32,14 @@ int main(int argc, char* argv[])
     /* Handle command line arguments */
     if(argc != 3)
     {
-        fprintf(stderr, "Error: Invalid number of arguments\n");
+        perror("Error, Invalid number of command line arguments");
         pthread_exit(NULL);
     }
     m = atoi(argv[1]);
     t = atoi(argv[2]);
     if(m < 1 || t < 0)
     {
-        fprintf(stderr, "Error, invalid given values of m = %d and t = %d\n",
-            m, t);
+        perror("Error, Invalid coomand line arguments");
         pthread_exit(NULL);
     }
 
@@ -62,8 +61,7 @@ int main(int argc, char* argv[])
     fclose(sim_in);
     if(lineNo < 50 || lineNo > 100)
     {
-        fprintf(stderr,
-            "Error: number of lines in sim_input must be between 50 and 100\n");
+        perror("Error, sim_input must be between 50 and 100 lines");
         pthread_exit(NULL);
     }
 
@@ -100,8 +98,7 @@ int main(int argc, char* argv[])
     );
     if(threadError)
     {
-        fprintf(stderr, "Error: pthread_create error number %d\n",
-            threadError);
+        perror("Error, request thread could not be created");
         pthread_exit(NULL);
     }
 
@@ -121,8 +118,7 @@ int main(int argc, char* argv[])
         );
         if(threadError)
         {
-            fprintf(stderr, "Error: pthread_create error number %d\n",
-                threadError);
+            perror("Error, lift thread could not be created");
             pthread_exit(NULL);
         }
     }
@@ -254,8 +250,7 @@ void* request(void* nullPtr)
         /* Make sure read values are legal */
         if(srcFlr < 1 || srcFlr > 20 || destFlr < 1 || destFlr > 20)
         {
-            fprintf(stderr, "Illegal floor values of %d %d in sim_input\n",
-                srcFlr, destFlr);
+            perror("Illegal floor values in sim_input");
             buffer_setComplete(buff);
             fclose(sim_in);
             pthread_exit(0);

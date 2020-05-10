@@ -44,15 +44,14 @@ int main(int argc, char* argv[])
     /* Handle command line arguments */
     if(argc != 3)
     {
-        fprintf(stderr, "Error: Invalid number of arguments\n");
+        perror("Error: Invalid number of arguments");
         return 1;
     }
     m = atoi(argv[1]);
     t = atoi(argv[2]);
     if(m < 1 || t < 0)
     {
-        fprintf(stderr, "Error, invalid given values of m = %d and t = %d\n",
-            m, t);
+        perror("Error, invalid command line arguments");
         return 1;
     }
 
@@ -74,8 +73,7 @@ int main(int argc, char* argv[])
     fclose(sim_in);
     if(lineNo < 50 || lineNo > 100)
     {
-        fprintf(stderr,
-            "Error: number of lines in sim_input must be between 50 and 100\n");
+        perror("Error, sim_input must be between 50 and 100 lines");
         return 1;
     }
 
@@ -130,7 +128,7 @@ int main(int argc, char* argv[])
     if(forkVal == -1)
     {
         /* Error */
-        fprintf(stderr, "Error: fork error number %d\n", errno);
+        perror("Error, fork failed");
         return 1;
     }
     if(forkVal == 0)
@@ -155,7 +153,7 @@ int main(int argc, char* argv[])
         {
             /* Error */
             if(errno != 0) perror("Main error 6.2");
-            fprintf(stderr, "Error: fork error number %d\n", errno);
+            perror("Error, fork failed");
             return 1;
         }
         if(forkVal == 0)
@@ -184,12 +182,12 @@ int main(int argc, char* argv[])
     sim_out = fopen("sim_out", "a");
     if(sim_out == NULL)
     {
-        perror("Error, sim_input file could not be opened");
+        perror("Error, sim_out file could not be opened");
         return 1;
     }
     else if(ferror(sim_out))
     {
-        perror("Error in opening sim_input");
+        perror("Error in opening sim_out");
         fclose(sim_out);
         sim_out = NULL;
         return 1;
@@ -405,7 +403,7 @@ void request()
         /* Make sure read values are legal */
         if(srcFlr < 1 || srcFlr > 20 || destFlr < 1 || destFlr > 20)
         {
-            fprintf(stderr, "Illegal floor values of %d %d in sim_input\n",
+            perror("Illegal floor values of %d %d in sim_input\n",
                 srcFlr, destFlr);
             buffer_setComplete(buff);
             fclose(sim_in);
