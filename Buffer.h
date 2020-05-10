@@ -1,3 +1,6 @@
+/* Control and store FIFO array buffer initialised with either heap or shared
+ * memory allocation */
+
 #ifndef BUFFER_H
 
     #define BUFFER_H
