@@ -1,3 +1,6 @@
+/* Control and store FIFO array buffer initialised with either heap or shared
+ * memory allocation */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h> 
