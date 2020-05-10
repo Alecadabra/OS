@@ -34,8 +34,11 @@ int main(int argc, char* argv[])
     int lineNo = 0; /* Number of lines counted in sim_input */
     int fd; /* Shared memory file descriptor used for various variables */
     buffer* buff; /* The buffer */
+    int* fd_buff; /* File descriptors for buffer shared memory */
     int* sharedTotMoves;
+    int fd_totMoves; /* File descriptor for sharedTotMoves shared memory */
     int* sharedTotRequests;
+    int fd_totRequests; /* File descriptor for sharedTotRequests shared memory */
     sem_t* buffMutex; /* Mutex lock for accessing buffer */
     sem_t* buffFull; /* Condition variable for full buffer */
     sem_t* buffEmpty; /* Condition variable for empty buffer */
@@ -101,7 +104,9 @@ int main(int argc, char* argv[])
     if(errno != 0) perror("Main error 3");
 
     /* Initialise buffer */ 
-    buff = buffer_init_process(m);
+    fd_buff = (int*)malloc(m * sizeof(int) + 2);
+    buff = buffer_init_process(m, &fd_buff);
+    
     if(errno != 0) perror("Main error 4");
 
     /* Set up shared memory for total moves an requests */
@@ -269,7 +274,8 @@ void lift(int liftNum, int t)
         sem_wait(buffEmpty);
 
         /* Dequeue once from buffer */
-        buffer_dequeue(buff, &srcFlr, &destFlr);
+        if(!buffer_dequeue(buff, &srcFlr, &destFlr))
+            perror("Buffer dequeue failed");
 
         /* Unlock buffer mutex */
         sem_post(buffMutex);

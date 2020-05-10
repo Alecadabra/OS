@@ -14,11 +14,12 @@
         int   tail;     /* Index of last element                              */
         int   count;    /* Number of populated elements                       */
         int   complete; /* Boolean if requester is finished                   */
+        int*  fd;       /* FDs of shared memory, NULL if not shared memory    */
     } buffer;
 
     /* Function forward declarations */
     buffer* buffer_init           (int);
-    buffer* buffer_init_process   (int);
+    buffer* buffer_init_process   (int, int*);
     int     buffer_isEmpty        (buffer*);
     int     buffer_isFull         (buffer*);
     int     buffer_isComplete     (buffer*);

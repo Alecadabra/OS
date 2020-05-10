@@ -24,6 +24,7 @@ buffer* buffer_init(int m)
     buff->head     = 0;
     buff->tail     = 0;
     buff->complete = 0;
+    buff->fd       = NULL;
 
     for(i = 0; i < buff->size; i++)
         buff->array[i] = (int*)malloc(2 * sizeof(int));
@@ -32,10 +33,9 @@ buffer* buffer_init(int m)
 }
 
 /* Create a new buffer using shared memory allocation */
-buffer* buffer_init_process(int m)
+buffer* buffer_init_process(int m, int* fd)
 {
     int i;
-    int fd;
     buffer* buff;
     char entry_str[32];
 
@@ -71,6 +71,7 @@ buffer* buffer_init_process(int m)
     buff->head     = 0;
     buff->tail     = 0;
     buff->complete = 0;
+    buff->fd = NULL;
 
     return buff;
 }
