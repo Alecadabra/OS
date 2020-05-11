@@ -42,9 +42,13 @@ int main(int argc, char* argv[])
     int*    totReq;         /* Total requests served shared obj ptr           */
     int     fd_totReq;      /* File descriptor for totReq                     */
     sem_t*  buffMutex;      /* Binary semaphore for accessing buffer          */
+    int     fd_buffMutex;   /* File descriptor for buffMutex                  */
     sem_t*  buffFull;       /* Counting semaphore for full, init to m         */
+    int     fd_buffFull;    /* File descriptor for buffFull                   */
     sem_t*  buffEmpty;      /* Counting semaphore for empty, init to m        */
+    int     fd_buffEmpty;   /* File descriptor for buffEmpty                  */
     sem_t*  logMutex;       /* Binary semaphore for accessing sim_out         */
+    int     fd_logMutex;    /* File descriptor for logMutex                   */
 
     /* Handle command line arguments */
     if(argc != 3)
@@ -83,21 +87,41 @@ int main(int argc, char* argv[])
     }
 
     /* Clear out sim_out since we are appending to it */
-    remove("sim_out");
+    unlink("sim_out");
 
     /* Initialise semaphores */
-    buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME,  O_CREAT | O_EXCL, 0666, 1);
-    buffFull =  (sem_t*)sem_open(SEM_FULL_NAME,  O_CREAT | O_EXCL, 0666, m);
-    buffEmpty = (sem_t*)sem_open(SEM_EMPTY_NAME, O_CREAT | O_EXCL, 0666, 0);
-    logMutex =  (sem_t*)sem_open(SEM_LOG_NAME,   O_CREAT | O_EXCL, 0666, 1);
-    if(buffMutex == SEM_FAILED) perror("BuffMutex failed");
-    if(buffFull  == SEM_FAILED) perror("BuffFull failed" );
-    if(buffEmpty == SEM_FAILED) perror("BuffEmpty failed");
-    if(logMutex  == SEM_FAILED) perror("LogMutex failed" );
+    fd_buffMutex = shm_open(SEM_BUFF_NAME,  O_CREAT | O_RDWR, 0666);
+    fd_buffFull  = shm_open(SEM_FULL_NAME,  O_CREAT | O_RDWR, 0666);
+    fd_buffEmpty = shm_open(SEM_EMPTY_NAME, O_CREAT | O_RDWR, 0666);
+    fd_logMutex  = shm_open(SEM_LOG_NAME,   O_CREAT | O_RDWR, 0666);
+    if(fd_buffMutex == -1) perror("Open failed on buffMutex");
+    if(fd_buffFull  == -1) perror("Open failed on buffFull" );
+    if(fd_buffEmpty == -1) perror("Open failed on buffEmpty");
+    if(fd_logMutex  == -1) perror("Open failed on logMutex" );
+    ftruncate(fd_buffMutex, sizeof(sem_t));
+    ftruncate(fd_buffFull,  sizeof(sem_t));
+    ftruncate(fd_buffEmpty, sizeof(sem_t));
+    ftruncate(fd_logMutex,  sizeof(sem_t));
+    buffMutex = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffMutex, 0);
+    buffFull  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffFull,  0);
+    buffEmpty = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffEmpty, 0);
+    logMutex  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_logMutex,  0);
+    if(buffMutex == MAP_FAILED) perror("Map failed on buffMutex");
+    if(buffFull  == MAP_FAILED) perror("Map failed on buffFull" );
+    if(buffEmpty == MAP_FAILED) perror("Map failed on buffEmpty");
+    if(logMutex  == MAP_FAILED) perror("Map failed on logMutex" );
+    if(sem_init(buffMutex, 1, 1) == -1) perror("Sem init failed on buffMutex");
+    if(sem_init(buffFull,  1, 0) == -1) perror("Sem init failed on buffFull" );
+    if(sem_init(buffEmpty, 1, m) == -1) perror("Sem init failed on buffEmpty");
+    if(sem_init(logMutex,  1, 1) == -1) perror("Sem init failed on logMutex" );
 
     /* Initialise buffer */ 
     fd_buffArr = (int*)malloc((m + 2) * sizeof(int)); /* FDs of entire buffer */
-    buff       = buffer_init_process(m, fd_buffArr);  /* Stores FDs in array  */
+    buff       = buffer_open(m, fd_buffArr);          /* Stores FDs in array  */
 
     /* Set up shared memory for total moves an requests */
     fd_totMov = shm_open(TOT_MOVES_NAME,    O_CREAT | O_RDWR, 0666);
@@ -127,6 +151,7 @@ int main(int argc, char* argv[])
     {
         /* You are the child */
         request();
+        free(fd_buffArr);
         return 0;
     }
     else
@@ -149,6 +174,7 @@ int main(int argc, char* argv[])
         {
             /* You are the child */
             lift(i + 1, t);
+            free(fd_buffArr);
             return 0;
         }
         else
@@ -181,6 +207,11 @@ int main(int argc, char* argv[])
     fclose (sim_out);
     
     /* Clean up */
+    sem_destroy(buffMutex);
+    sem_destroy(buffFull);
+    sem_destroy(buffEmpty);
+    sem_destroy(logMutex);
+
     if(munmap(totMov,    sizeof(int))   == -1) perror("Munmap error totMov"   );
     if(munmap(totReq,    sizeof(int))   == -1) perror("Munmap error totReq"   );
     if(munmap(buffMutex, sizeof(sem_t)) == -1) perror("Munmap error buffMutex");
@@ -188,22 +219,22 @@ int main(int argc, char* argv[])
     if(munmap(buffEmpty, sizeof(sem_t)) == -1) perror("Munmap error buffEmpty");
     if(munmap(logMutex,  sizeof(sem_t)) == -1) perror("Munmap error logMutex" );
 
-    if(close    (fd_totMov) == -1) perror("Close error totMov"    );
-    if(close    (fd_totReq) == -1) perror("Close error totReq"    );
-    if(sem_close(buffMutex) == -1) perror("Close error bufffMutex");
-    if(sem_close(buffFull)  == -1) perror("Close error buffFull"  );
-    if(sem_close(buffEmpty) == -1) perror("Close error buffEmpty" );
-    if(sem_close(logMutex)  == -1) perror("Close error logMutex"  );
+    if(close(fd_totMov)    == -1) perror("Close error totMov"   );
+    if(close(fd_totReq)    == -1) perror("Close error totReq"   );
+    if(close(fd_buffMutex) == -1) perror("Close error buffMutex");
+    if(close(fd_buffFull)  == -1) perror("Close error buffFull" );
+    if(close(fd_buffEmpty) == -1) perror("Close error buffEmpty");
+    if(close(fd_logMutex)  == -1) perror("Close error logMutex" );
 
-    if(sem_unlink(SEM_BUFF_NAME)     == -1) perror("Unlink error sem buff"    );
-    if(sem_unlink(SEM_FULL_NAME)     == -1) perror("Unlink error sem full"    );
-    if(sem_unlink(SEM_EMPTY_NAME)    == -1) perror("Unlink error sem empty"   );
-    if(sem_unlink(SEM_LOG_NAME)      == -1) perror("Unlink error sem log"     );
+    if(shm_unlink(SEM_BUFF_NAME)     == -1) perror("Unlink error sem buff"    );
+    if(shm_unlink(SEM_FULL_NAME)     == -1) perror("Unlink error sem full"    );
+    if(shm_unlink(SEM_EMPTY_NAME)    == -1) perror("Unlink error sem empty"   );
+    if(shm_unlink(SEM_LOG_NAME)      == -1) perror("Unlink error sem log"     );
     if(shm_unlink(TOT_MOVES_NAME)    == -1) perror("Unlink error tot moves"   );
     if(shm_unlink(TOT_REQUESTS_NAME) == -1) perror("Unlink error tot requests");
 
-    buffer_destroy_process(buff, fd_buffArr);
-    free                  (fd_buffArr);
+    buffer_close(buff, fd_buffArr);
+    free        (fd_buffArr      );
 
     return 0;
 }
@@ -224,9 +255,13 @@ void lift(int liftNum, int t)
     int     fd_totMov;       /* File descriptor for totMov shared obj         */
     int*    totMov;          /* totMov shared obj                             */
     sem_t*  buffMutex;       /* Binary semaphore for accessing buffer         */
+    int     fd_buffMutex;    /* File descriptor for buffMutex                 */
     sem_t*  buffFull;        /* Counting semaphore for full, init to m        */
+    int     fd_buffFull;     /* File descriptor for buffFull                  */
     sem_t*  buffEmpty;       /* Counting semaphore for empty, init to m       */
+    int     fd_buffEmpty;    /* File descriptor for buffEmpty                 */
     sem_t*  logMutex;        /* Binary semaphore for accessing sim_out        */
+    int     fd_logMutex;     /* File descriptor for logMutex                  */
     FILE*   sim_out;         /* File ptr to log outout file to append to      */
 
     /* Set up shared buffer and total moves counter */
@@ -234,22 +269,34 @@ void lift(int liftNum, int t)
     fd_totMov = shm_open(TOT_MOVES_NAME, O_RDWR, 0666);
     if(fd_buff   == -1) perror("Open failed on lift buffer"       );
     if(fd_totMov == -1) perror("Open failed on lift moves counter");
-    buff        = (buffer*)mmap(0, sizeof(buffer), PROT_READ | PROT_WRITE,
+    buff   = (buffer*)mmap(0, sizeof(buffer), PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_buff,   0);
-    localTotMov = (int*)   mmap(0, sizeof(int),    PROT_READ | PROT_WRITE,
+    totMov = (int*)   mmap(0, sizeof(int),    PROT_READ | PROT_WRITE,
         MAP_SHARED, fd_totMov, 0);
-    if(buff        == MAP_FAILED) perror("Map failed on lift buffer"       );
-    if(localTotMov == MAP_FAILED) perror("Map failed on lift moves counter");
+    if(buff   == MAP_FAILED) perror("Map failed on lift buffer"       );
+    if(totMov == MAP_FAILED) perror("Map failed on lift moves counter");
 
     /* Open semaphores */
-    buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME,  0);
-    buffFull  = (sem_t*)sem_open(SEM_FULL_NAME,  0);
-    buffEmpty = (sem_t*)sem_open(SEM_EMPTY_NAME, 0);
-    logMutex  = (sem_t*)sem_open(SEM_LOG_NAME,   0);
-    if(buffMutex == SEM_FAILED) perror("BuffMutex failed");
-    if(buffFull  == SEM_FAILED) perror("BuffFull failed" );
-    if(buffEmpty == SEM_FAILED) perror("BuffEmpty failed");
-    if(logMutex  == SEM_FAILED) perror("LogMutex failed" );
+    fd_buffMutex = shm_open(SEM_BUFF_NAME,  O_RDWR, 0666);
+    fd_buffEmpty = shm_open(SEM_FULL_NAME,  O_RDWR, 0666);
+    fd_buffFull  = shm_open(SEM_EMPTY_NAME, O_RDWR, 0666);
+    fd_logMutex  = shm_open(SEM_LOG_NAME,   O_RDWR, 0666);
+    if(fd_buffMutex == -1) perror("Open failed on buffMutex");
+    if(fd_buffFull  == -1) perror("Open failed on buffFull" );
+    if(fd_buffEmpty == -1) perror("Open failed on buffEmpty");
+    if(fd_logMutex  == -1) perror("Open failed on logMutex" );
+    buffMutex = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffMutex, 0);
+    buffFull  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffFull,  0);
+    buffEmpty = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffEmpty, 0);
+    logMutex  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_logMutex,  0);
+    if(buffMutex == MAP_FAILED) perror("Map failed on buffMutex");
+    if(buffFull  == MAP_FAILED) perror("Map failed on buffFull" );
+    if(buffEmpty == MAP_FAILED) perror("Map failed on buffEmpty");
+    if(logMutex  == MAP_FAILED) perror("Map failed on logMutex" );
 
     while(!done)
     {
@@ -260,9 +307,13 @@ void lift(int liftNum, int t)
         sem_wait(buffMutex);
 
         /* Dequeue once from buffer */
-        if(!buffer_dequeue(buff, &srcFlr, &destFlr))
+        buffer_dequeue(buff, &srcFlr, &destFlr);
+        
+        /* Check for 'poisioning' */
+        if(srcFlr == -1 && destFlr == -1)
         {
-            /* Dequeue failed */
+            buffer_enqueue(buff, -1, -1);
+            sem_post(buffEmpty);
             sem_post(buffMutex);
             return;
         }
@@ -282,7 +333,7 @@ void lift(int liftNum, int t)
         sem_wait(logMutex);
 
         /* Increment shared total moves, uses logMutex */
-        (*localTotMov) += move;
+        (*totMov) += move;
 
         /* Write log to sim_out */
         sim_out = fopen("sim_out", "a");
@@ -328,33 +379,40 @@ void lift(int liftNum, int t)
     }
 
     /* Clean up */
-    munmap(buff,        sizeof(buffer));
-    munmap(localTotMov, sizeof(int)   );
+    munmap(buff,      sizeof(buffer));
+    munmap(totMov,    sizeof(int)   );
+    munmap(buffMutex, sizeof(sem_t) );
+    munmap(buffFull,  sizeof(sem_t) );
+    munmap(buffEmpty, sizeof(sem_t) );
+    munmap(logMutex,  sizeof(sem_t) );
 
-    sem_close(buffMutex);
-    sem_close(buffFull );
-    sem_close(buffEmpty);
-    sem_close(logMutex );
-    close    (fd_totMov);
-    close    (fd_buff  );
+    close(fd_totMov   );
+    close(fd_buff     );
+    close(fd_buffMutex);
+    close(fd_buffFull );
+    close(fd_buffEmpty);
+    close(fd_logMutex );
 }
 
 /* Represents Lift-R, producer process that enqueues requests onto the buffer */
 void request()
 {
-    FILE*   sim_in;   /* sim_input file ptr                                   */
-    int     srcFlr;   /* Destination floor read from sim_in                   */
-    int     destFlr;  /* Source floor read from sim_in                        */
-    int     fd_buff;  /* File descriptor for buffer shared obj                */
-    buffer* buff;      /* Buffer shared obj                                   */
-    int     fd_totReq; /* File descriptor for totMov shared obj               */
-    int*    totReq;    /* totReq shared obj                                   */
-    sem_t*  buffMutex; /* Binary semaphore for accessing buffer               */
-    sem_t*  buffFull;  /* Counting semaphore for full buffer, init to m       */
-    sem_t*  buffEmpty; /* Counting semaphore for empty buffer, init to m      */
-    sem_t*  logMutex;  /* Binary semaphore for accessing sim_out              */
-    FILE*   sim_out;   /* File ptr to log outout file to append to            */
-    int     i;         /* For loop index                                      */
+    FILE*   sim_in;       /* sim_input file ptr                               */
+    int     srcFlr;       /* Destination floor read from sim_in               */
+    int     destFlr;      /* Source floor read from sim_in                    */
+    int     fd_buff;      /* File descriptor for buffer shared obj            */
+    buffer* buff;         /* Buffer shared obj                                */
+    int     fd_totReq;    /* File descriptor for totMov shared obj            */
+    int*    totReq;       /* totReq shared obj                                */
+    sem_t*  buffMutex;    /* Binary semaphore for accessing buffer            */
+    int     fd_buffMutex; /* File descriptor for buffMutex                    */
+    sem_t*  buffFull;     /* Counting semaphore for full, init to m           */
+    int     fd_buffFull;  /* File descriptor for buffFull                     */
+    sem_t*  buffEmpty;    /* Counting semaphore for empty, init to m          */
+    int     fd_buffEmpty; /* File descriptor for buffEmpty                    */
+    sem_t*  logMutex;     /* Binary semaphore for accessing sim_out           */
+    int     fd_logMutex;  /* File descriptor for logMutex                     */
+    FILE*   sim_out;      /* File ptr to log outout file to append to         */
 
     /* Set up shared buffer and  total request counter */
     fd_buff   = shm_open(BUFF_NAME,         O_RDWR, 0666);
@@ -369,15 +427,27 @@ void request()
     if(totReq == MAP_FAILED) perror("Map failed on requester's total counter");
 
     /* Open semaphores */
-    buffMutex = (sem_t*)sem_open(SEM_BUFF_NAME,  0);
-    buffFull  = (sem_t*)sem_open(SEM_FULL_NAME,  0);
-    buffEmpty = (sem_t*)sem_open(SEM_EMPTY_NAME, 0);
-    logMutex  = (sem_t*)sem_open(SEM_LOG_NAME,   0);
-    if(buffMutex == SEM_FAILED) perror("BuffMutex failed");
-    if(buffFull  == SEM_FAILED) perror("BuffFull failed" );
-    if(buffEmpty == SEM_FAILED) perror("BuffEmpty failed");
-    if(logMutex  == SEM_FAILED) perror("LogMutex failed" );
-
+    fd_buffMutex = shm_open(SEM_BUFF_NAME,  O_RDWR, 0666);
+    fd_buffEmpty = shm_open(SEM_FULL_NAME,  O_RDWR, 0666);
+    fd_buffFull  = shm_open(SEM_EMPTY_NAME, O_RDWR, 0666);
+    fd_logMutex  = shm_open(SEM_LOG_NAME,   O_RDWR, 0666);
+    if(fd_buffMutex == -1) perror("Open failed on buffMutex");
+    if(fd_buffFull  == -1) perror("Open failed on buffFull" );
+    if(fd_buffEmpty == -1) perror("Open failed on buffEmpty");
+    if(fd_logMutex  == -1) perror("Open failed on logMutex" );
+    buffMutex = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffMutex, 0);
+    buffFull  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffFull,  0);
+    buffEmpty = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_buffEmpty, 0);
+    logMutex  = (sem_t*)mmap(0, sizeof(sem_t), PROT_READ | PROT_WRITE,
+        MAP_SHARED, fd_logMutex,  0);
+    if(buffMutex == MAP_FAILED) perror("Map failed on buffMutex");
+    if(buffFull  == MAP_FAILED) perror("Map failed on buffFull" );
+    if(buffEmpty == MAP_FAILED) perror("Map failed on buffEmpty");
+    if(logMutex  == MAP_FAILED) perror("Map failed on logMutex" );
+    
     /* Open sim_input */
     sim_in = fopen("sim_input", "r");
     if(sim_in == NULL)
@@ -418,11 +488,11 @@ void request()
         /* Enqueue once into the buffer */
         if(!buffer_enqueue(buff, srcFlr, destFlr))
         {
-            /* Enqueue failed */
+            perror("Buffer enqueue failed");
             sem_post(buffMutex);
             return;
         }
-
+        
         /* Unlock buffer mutex */
         sem_post(buffMutex);
 
@@ -461,19 +531,26 @@ void request()
     }
 
     /* Set lifts to close once the buffer is empty */
+    sem_wait(buffMutex);
     buffer_setComplete(buff);
-    for(i = 0; i < LIFTS; i++) sem_post(buffEmpty);
+    buffer_enqueue(buff, -1, -1);
+    sem_post(buffEmpty);
+    sem_post(buffMutex);
 
     /* Clean up */
     fclose(sim_in);
 
-    munmap(buff,   sizeof(buff));
-    munmap(totReq, sizeof(int));
+    munmap(buff,      sizeof(buffer));
+    munmap(totReq,    sizeof(int)   );
+    munmap(buffMutex, sizeof(sem_t) );
+    munmap(buffFull,  sizeof(sem_t) );
+    munmap(buffEmpty, sizeof(sem_t) );
+    munmap(logMutex,  sizeof(sem_t) );
 
-    sem_close(buffMutex);
-    sem_close(buffFull );
-    sem_close(buffEmpty);
-    sem_close(logMutex );
-    close    (fd_buff  );
-    close    (fd_totReq);
+    close(fd_buff     );
+    close(fd_totReq   );
+    close(fd_buffMutex);
+    close(fd_buffFull );
+    close(fd_buffEmpty);
+    close(fd_logMutex );
 }

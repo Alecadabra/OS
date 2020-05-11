@@ -35,7 +35,7 @@ buffer* buffer_init(int m)
 }
 
 /* Create a new buffer using shared memory allocation */
-buffer* buffer_init_process(int m, int* fd)
+buffer* buffer_open(int m, int* fd)
 {
     int i;
     buffer* buff;
@@ -151,7 +151,7 @@ void buffer_destroy(buffer* buff)
 }
 
 /* Clean up all asscociated memory of a buffer */
-void buffer_destroy_process(buffer* buff, int* fd)
+void buffer_close(buffer* buff, int* fd)
 {
     int i;
     char entry_str[32]; /* Name of each 2nd dimension array in buff->array */

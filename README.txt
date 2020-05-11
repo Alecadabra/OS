@@ -22,3 +22,7 @@ Run part B with `./lift_sim_B m t`
 
 m is the maximum size of buffer
 t is the time taken for a lift to move in seconds
+
+--------------------------------------------------------------------------------
+
+Samples in /samples directory, see /samples/README.txt
