@@ -2,7 +2,7 @@
 
 # Variables --------------------------------------------------------------------
 
-gcc   = gcc -Wall -ansi -Werror -pedantic -g####################################
+gcc   = gcc -Wall -ansi -Werror -pedantic
 link  = -lrt -pthread
 execA = lift_sim_A
 execB = lift_sim_B
