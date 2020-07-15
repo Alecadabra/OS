@@ -8,7 +8,7 @@ Part of my Computer Science degree at Curtin University. My final mark was 82%.
 
 From the unit handbook:
 
-The operating systems are a critical part of any computer systems, and therefore
+> The operating systems are a critical part of any computer systems, and therefore
 it is important for all computing students to have sufficient knowledge of 
 operating systems that evolve with the development of computer technologies. In 
 this unit students will learn the following main OS components: process, thread, 
