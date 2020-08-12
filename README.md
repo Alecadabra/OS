@@ -6,7 +6,7 @@ Part of my Computer Science degree at Curtin University. My final mark was 82%.
 --- | --- | --- | --- | --- | --- |
 [OOPD](https://github.com/Alecadabra/OOPD) | [UCP](https://github.com/Alecadabra/UCP)<br>[DSA](https://github.com/Alecadabra/DSA) | **OS**<br>[OOSE](https://github.com/Alecadabra/OOSE)
 
-From the unit handbook:
+Syllabus:
 
 > The operating systems are a critical part of any computer systems, and therefore
 it is important for all computing students to have sufficient knowledge of 
